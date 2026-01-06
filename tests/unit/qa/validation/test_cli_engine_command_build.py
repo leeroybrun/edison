@@ -61,35 +61,38 @@ def test_cli_engine_places_prompt_arg_immediately_after_dash_subcommand() -> Non
     assert cmd[:5] == ["gemini", "-p", "PROMPT", "--output-format", "json"]
 
 
-def test_cli_engine_build_command_includes_coderabbit_cwd_flag() -> None:
-    """CodeRabbit CLI expects an explicit --cwd when running inside git worktrees.
+def test_cli_engine_adds_cd_flag_when_run_from_project_root() -> None:
+    """When run_from_project_root is set, cd_flag should be added before pre_flags.
 
-    Some CLIs search for a `.git/` directory (not a `.git` file), which can cause them
-    to accidentally operate on the parent repository rather than the active worktree.
+    This allows the sandbox to include all worktrees while the CLI works
+    in the correct worktree directory.
     """
     cfg = EngineConfig.from_dict(
-        "coderabbit-cli",
+        "codex-cli",
         {
             "type": "cli",
-            "command": "coderabbit",
-            "subcommand": "review",
-            "read_only_flags": ["--prompt-only", "--cwd", "{worktree_path}"],
-            "prompt_flag": "--config",
-            "response_parser": "coderabbit",
+            "command": "codex",
+            "cd_flag": "--cd",
+            "pre_flags": ["--sandbox", "workspace-write"],
+            "subcommand": "exec",
+            "output_flags": ["--json"],
+            "prompt_mode": "stdin",
+            "stdin_prompt_arg": "-",
+            "response_parser": "codex",
+            "run_from_project_root": True,
         },
     )
-    engine = CLIEngine(cfg)
-    validator = ValidatorMetadata(
-        id="coderabbit",
-        name="CodeRabbit",
-        engine="coderabbit-cli",
-        wave="comprehensive",
-    )
+    project_root = Path("/project/root")
+    engine = CLIEngine(cfg, project_root=project_root)
+    validator = ValidatorMetadata(id="security", name="Security", engine="codex-cli", wave="critical")
 
-    cmd = engine._build_command(
-        validator,
-        Path("/tmp/worktree"),
-        prompt_args=["--config", "PROMPT.md"],
-    )
+    worktree_path = Path("/project/root/.worktrees/session-123")
+    cmd = engine._build_command(validator, worktree_path, prompt_args=["-"])
 
-    assert cmd[:5] == ["coderabbit", "review", "--prompt-only", "--cwd", "/tmp/worktree"]
+    # --cd should come first, before pre_flags
+    assert cmd[0] == "codex"
+    assert cmd[1] == "--cd"
+    assert cmd[2] == str(worktree_path.resolve())
+    assert cmd[3:5] == ["--sandbox", "workspace-write"]
+    assert "exec" in cmd
+    assert "--json" in cmd

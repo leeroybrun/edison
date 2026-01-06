@@ -10,7 +10,7 @@ import argparse
 import sys
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
-from edison.core.task import normalize_record_id
+from edison.cli._utils import resolve_existing_task_id
 
 SUMMARY = "Remove tasks from a validation bundle (clear bundle_root)"
 
@@ -53,7 +53,7 @@ def main(args: argparse.Namespace) -> int:
         skipped: list[str] = []
 
         for raw in list(getattr(args, "members", []) or []):
-            task_id = normalize_record_id("task", str(raw))
+            task_id = resolve_existing_task_id(project_root=project_root, raw_task_id=str(raw))
             task = repo.get(task_id)
             if task is None:
                 raise ValueError(f"Task not found: {task_id}")
@@ -92,4 +92,3 @@ if __name__ == "__main__":
     register_args(parser)
     cli_args = parser.parse_args()
     sys.exit(main(cli_args))
-

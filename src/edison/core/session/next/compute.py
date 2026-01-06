@@ -455,21 +455,7 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
         for t in session_tasks
     }
 
-    # Fail-open UX fallback: if task files are missing/unlinked, fall back to the
-    # lightweight `session.tasks` index so `session next` can still guide users.
-    if not tasks_map:
-        tasks_index = session.get("tasks") if isinstance(session, dict) else None
-        if isinstance(tasks_index, dict) and tasks_index:
-            for task_id, entry in tasks_index.items():
-                if not task_id or not isinstance(task_id, str):
-                    continue
-                e = entry if isinstance(entry, dict) else {}
-                status = e.get("status") or e.get("state") or infer_task_status(task_id)
-                tasks_map[task_id] = {
-                    "status": status,
-                    "parentId": e.get("parentId") if isinstance(e.get("parentId"), str) else None,
-                    "childIds": list(e.get("childIds") or []) if isinstance(e.get("childIds"), list) else [],
-                }
+    # Session JSON does not store task indexes; task discovery is filesystem-driven.
 
     # Required-fill reminders: for tasks that declare REQUIRED FILL markers, prompt
     # the orchestrator/LLM to complete them before starting implementation work.

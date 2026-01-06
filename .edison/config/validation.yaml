@@ -5,85 +5,76 @@
 # their own validation presets/evidence requirements here as needed.
 
 validation:
-  # Default preset used for per-task iteration in the Edison repo.
+  # Fast preset used by default for per-task iteration in the Edison repo.
   defaultPreset: fast
 
-  # Presets are repo-configurable and can be overridden by downstream projects.
+  # Deep preset used for session-close verification in the Edison repo.
   presets:
     fast:
       name: fast
       description: "Fast per-task validation for iteration (Edison repo)"
       validators:
-        - coderabbit
-      # required_evidence is intentionally omitted so baseline evidence applies.
-      blocking_validators: []
-
-    # Strict preset used for bundle/meta validation (Codex + Claude + CodeRabbit).
-    strict:
-      name: strict
-      description: "Strict validation for bundles/meta tasks (Edison repo)"
-      validators:
-        - global-codex
         - global-claude
-        - coderabbit
-      required_evidence:
-        - command-type-check.txt
-        - command-lint.txt
-        - command-test.txt
-        - command-build.txt
+        - global-coderabbit
+      # required_evidence is intentionally omitted so baseline evidence applies.
       blocking_validators:
-        - global-codex
         - global-claude
 
     deep:
       name: deep
       description: "Deep validation required before session close (Edison repo)"
       validators:
-        - global-codex
         - global-claude
         - security
         - performance
-        - coderabbit
+        - global-coderabbit
       required_evidence:
         - command-type-check.txt
         - command-test-full.txt
         - command-build.txt
       blocking_validators:
-        - global-codex
         - global-claude
         - security
         - performance
 
   validators:
+    # Edison repo default: avoid running Codex CLI validators as hard blockers.
+    # In practice, Codex CLI can take >10 minutes per run in large worktrees.
+    # Projects that want Codex CLI validation should override this in their own
+    # `.edison/config/validation.yaml`.
     global-codex:
-      enabled: true
-      always_run: false
-      blocking: true
-      timeout: 1200
+      enabled: false
 
-    global-claude:
-      always_run: false
-      blocking: true
-      timeout: 1200
-
+    # Run critical validators with Claude CLI by default for reliability.
     security:
       engine: claude-cli
-      blocking: false
-      timeout: 900
+      timeout: 300
 
     performance:
       engine: claude-cli
-      blocking: false
+      timeout: 300
+
+    # The global validator prompt is intentionally large (constitution + checklist + stack overlays).
+    # 300s is frequently too low for remote model execution; avoid false negatives due to timeouts.
+    global-claude:
       timeout: 900
 
-    coderabbit:
-      blocking: false
+    global-coderabbit:
+      name: "CodeRabbit AI Review (Global)"
+      engine: coderabbit-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/critical/coderabbit.md"
+      wave: global
       always_run: false
-      # CodeRabbit runs are best-effort in local/dev workflows and can hang when
-      # no PR context is available; keep a short timeout so it remains advisory.
-      timeout: 90
+      blocking: false
+      timeout: 600
+      context7_required: false
+      context7_packages: []
+      triggers: []
+      focus: []
 
-    # Keep non-required global validators disabled by default in the Edison repo.
+    # Edison repo default: keep the global validator set small and reliable.
+    # Other projects can re-enable these in their own validation.yaml if desired.
     global-gemini:
       enabled: false
 
@@ -94,9 +85,8 @@ validation:
   sessionClose:
     preset: deep
 
-  # Baseline evidence should be high-signal but fast enough to run often.
+  # Per-task baseline evidence should be high-signal but fast enough to run often.
+  # Deep validation (type-check, full tests, build) is reserved for session close.
   evidence:
     requiredFiles:
-      - command-type-check.txt
-      - command-lint.txt
       - command-test.txt

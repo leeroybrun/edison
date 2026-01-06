@@ -122,6 +122,10 @@ def setup_base_environment(root: Path, owner: str = "test-user") -> Dict[str, st
         Dictionary of environment variables
     """
     env = os.environ.copy()
+    # Tests must be deterministic: developer machines may set this override to a
+    # different repo. Ensure E2E processes always resolve `.edison/` from the
+    # test project root (`AGENTS_PROJECT_ROOT`).
+    env.pop("EDISON_paths__project_config_dir", None)
     env.update({
         "AGENTS_PROJECT_ROOT": str(root),
         "AGENTS_OWNER": owner,

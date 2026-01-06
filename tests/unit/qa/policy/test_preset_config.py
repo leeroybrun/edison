@@ -22,9 +22,32 @@ from tests.helpers.io_utils import write_yaml
 class TestPresetConfigLoading:
     """Tests for loading preset configuration from YAML."""
 
-    def test_loads_bundled_quick_preset(self, tmp_path: Path, monkeypatch):
-        """Core bundled config must include a 'quick' preset."""
+    def test_required_evidence_semantics_are_tristate(self, tmp_path: Path, monkeypatch):
+        """Presets must support tri-state required_evidence semantics (None vs [] vs explicit list).
+
+        This is behavior, not a config contract: tests must not pin specific bundled presets/validators.
+        """
         repo = create_repo_with_git(tmp_path)
+        create_edison_config_structure(repo)
+
+        cfg_dir = repo / ".edison" / "config"
+        write_yaml(
+            cfg_dir / "validation.yaml",
+            {
+                "validation": {
+                    "presets": {
+                        "inherit": {"name": "inherit", "validators": []},
+                        "none": {"name": "none", "validators": [], "required_evidence": []},
+                        "explicit": {
+                            "name": "explicit",
+                            "validators": [],
+                            "required_evidence": ["command-test-full.txt"],
+                        },
+                    }
+                }
+            },
+        )
+
         setup_project_root(monkeypatch, repo)
         reset_edison_caches()
 
@@ -33,32 +56,9 @@ class TestPresetConfigLoading:
         loader = PresetConfigLoader(project_root=repo)
         presets = loader.load_presets()
 
-        assert "quick" in presets
-        quick = presets["quick"]
-        assert quick.name == "quick"
-        # Quick preset does not add validators beyond always_run globals.
-        assert quick.validators == []
-        # Quick preset explicitly requires no evidence.
-        assert quick.required_evidence == []
-
-    def test_loads_bundled_standard_preset(self, tmp_path: Path, monkeypatch):
-        """Core bundled config must include a 'standard' preset."""
-        repo = create_repo_with_git(tmp_path)
-        setup_project_root(monkeypatch, repo)
-        reset_edison_caches()
-
-        from edison.core.qa.policy.config import PresetConfigLoader
-
-        loader = PresetConfigLoader(project_root=repo)
-        presets = loader.load_presets()
-
-        assert "standard" in presets
-        standard = presets["standard"]
-        assert standard.name == "standard"
-        # Standard preset adds critical validators; evidence requirements are baseline + preset additions.
-        assert "security" in standard.validators
-        assert "performance" in standard.validators
-        assert standard.required_evidence is None
+        assert presets["inherit"].required_evidence is None
+        assert presets["none"].required_evidence == []
+        assert presets["explicit"].required_evidence == ["command-test-full.txt"]
 
     def test_project_can_override_preset(self, tmp_path: Path, monkeypatch):
         """Project-level config can override preset validators."""
@@ -66,17 +66,20 @@ class TestPresetConfigLoading:
 
         # Create project-level preset override
         config_dir = repo / ".edison" / "config"
-        write_yaml(config_dir / "qa.yaml", {
-            "validation": {
-                "presets": {
-                    "quick": {
-                        "name": "quick",
-                        "validators": ["global-codex", "custom-validator"],
-                        "required_evidence": ["custom-report.md"],
+        write_yaml(
+            config_dir / "validation.yaml",
+            {
+                "validation": {
+                    "presets": {
+                        "quick": {
+                            "name": "quick",
+                            "validators": ["custom-validator"],
+                            "required_evidence": ["custom-report.md"],
+                        }
                     }
                 }
-            }
-        })
+            },
+        )
 
         setup_project_root(monkeypatch, repo)
         reset_edison_caches()
@@ -96,18 +99,21 @@ class TestPresetConfigLoading:
 
         # Create project-specific preset
         config_dir = repo / ".edison" / "config"
-        write_yaml(config_dir / "qa.yaml", {
-            "validation": {
-                "presets": {
-                    "typescript-strict": {
-                        "name": "typescript-strict",
-                        "validators": ["global-codex", "typescript"],
-                        "required_evidence": ["command-type-check.txt", "command-lint.txt"],
-                        "blocking_validators": ["typescript"],
+        write_yaml(
+            config_dir / "validation.yaml",
+            {
+                "validation": {
+                    "presets": {
+                        "typescript-strict": {
+                            "name": "typescript-strict",
+                            "validators": ["typescript"],
+                            "required_evidence": ["command-type-check.txt", "command-lint.txt"],
+                            "blocking_validators": ["typescript"],
+                        }
                     }
                 }
-            }
-        })
+            },
+        )
 
         setup_project_root(monkeypatch, repo)
         reset_edison_caches()
@@ -119,7 +125,7 @@ class TestPresetConfigLoading:
 
         assert "typescript-strict" in presets
         ts_preset = presets["typescript-strict"]
-        assert ts_preset.validators == ["global-codex", "typescript"]
+        assert ts_preset.validators == ["typescript"]
         assert "typescript" in ts_preset.blocking_validators
 
     def test_get_preset_by_name(self, tmp_path: Path, monkeypatch):
@@ -159,19 +165,22 @@ class TestPresetInferenceRules:
         repo = create_repo_with_git(tmp_path)
 
         config_dir = repo / ".edison" / "config"
-        write_yaml(config_dir / "qa.yaml", {
-            "validation": {
-                "presetInference": {
-                    "rules": [
-                        {
-                            "patterns": ["*.prisma"],
-                            "preset": "database",
-                            "priority": 100,
-                        }
-                    ]
+        write_yaml(
+            config_dir / "validation.yaml",
+            {
+                "validation": {
+                    "presetInference": {
+                        "rules": [
+                            {
+                                "patterns": ["*.prisma"],
+                                "preset": "database",
+                                "priority": 100,
+                            }
+                        ]
+                    }
                 }
-            }
-        })
+            },
+        )
 
         setup_project_root(monkeypatch, repo)
         reset_edison_caches()

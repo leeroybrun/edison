@@ -10,7 +10,7 @@ import argparse
 import sys
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
-from edison.core.task import normalize_record_id
+from edison.cli._utils import resolve_existing_task_id
 
 SUMMARY = "Add tasks to a validation bundle (set bundle_root)"
 
@@ -40,23 +40,16 @@ def main(args: argparse.Namespace) -> int:
 
     try:
         project_root = get_repo_root(args)
-        root_id = normalize_record_id("task", str(args.root))
+        root_id = resolve_existing_task_id(project_root=project_root, raw_task_id=str(args.root))
 
         from edison.core.task.relationships.service import TaskRelationshipService
-        from edison.core.task.repository import TaskRepository
         from edison.core.qa.bundler.cluster import select_cluster
-
-        repo = TaskRepository(project_root=project_root)
-        if repo.get(root_id) is None:
-            raise ValueError(f"Root task not found: {root_id}")
 
         member_ids: list[str] = []
         for raw in list(getattr(args, "members", []) or []):
-            mid = normalize_record_id("task", str(raw))
+            mid = resolve_existing_task_id(project_root=project_root, raw_task_id=str(raw))
             if mid == root_id:
                 raise ValueError("A task cannot be a bundle member of itself")
-            if repo.get(mid) is None:
-                raise ValueError(f"Member task not found: {mid}")
             member_ids.append(mid)
 
         svc = TaskRelationshipService(project_root=project_root)
@@ -94,4 +87,3 @@ if __name__ == "__main__":
     register_args(parser)
     cli_args = parser.parse_args()
     sys.exit(main(cli_args))
-

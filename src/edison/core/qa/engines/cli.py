@@ -257,11 +257,19 @@ class CLIEngine:
         logger.debug(f"Full command: {' '.join(cmd_parts[:5])}...")
 
         try:
+            # Determine cwd: use project_root when run_from_project_root is set.
+            # This allows the sandbox to include all worktrees (main + _meta).
+            # The --cd flag in the command tells the CLI to work in the worktree.
+            if self.config.run_from_project_root and self.project_root:
+                exec_cwd = self.project_root.expanduser().resolve()
+            else:
+                exec_cwd = worktree_path
+
             # Execute subprocess
             result = run_ci_command_from_string(
                 cmd_parts[0],
                 extra_args=cmd_parts[1:],
-                cwd=worktree_path,
+                cwd=exec_cwd,
                 env=env,
                 timeout=validator.timeout,
                 capture_output=True,
@@ -355,8 +363,22 @@ class CLIEngine:
 
         cmd: list[str] = [self.command]
 
+        # When running from project root, add cd_flag to point to the worktree.
+        # This allows the sandbox to include all worktrees while still working
+        # in the correct directory. Must come before other flags.
+        if self.config.run_from_project_root and self.project_root and self.config.cd_flag:
+            worktree_abs = worktree_path.expanduser().resolve()
+            cmd.extend([self.config.cd_flag, str(worktree_abs)])
+
         # Some CLIs (e.g., Codex) require global flags before the subcommand.
         cmd.extend(_format_parts(self.config.pre_flags))
+
+        # Add writable directory flags (e.g., --add-dir for codex sandbox).
+        # Note: On macOS, this only works for paths within the sandbox root.
+        if self.config.writable_dirs and self.config.add_dir_flag:
+            writable_dirs = self._resolve_writable_dirs(worktree_path)
+            for wd in writable_dirs:
+                cmd.extend([self.config.add_dir_flag, str(wd)])
 
         required_mcp = getattr(validator, "mcp_servers", []) or []
         override_style = (self.config.mcp_override_style or "").strip()
@@ -532,6 +554,36 @@ class CLIEngine:
                 return direct_path
 
         return None
+
+    def _resolve_writable_dirs(self, worktree_path: Path) -> list[Path]:
+        """Resolve writable_dirs paths by expanding config tokens.
+
+        Args:
+            worktree_path: Working directory path (used as project root for token expansion)
+
+        Returns:
+            List of resolved absolute paths
+        """
+        if not self.config.writable_dirs:
+            return []
+
+        from edison.core.config.tokens import build_tokens, expand_tokens
+
+        # Use project_root for token expansion (falls back to worktree if not set).
+        root = (self.project_root or worktree_path).expanduser().resolve()
+        tokens = build_tokens(root)
+
+        result: list[Path] = []
+        for raw_dir in self.config.writable_dirs:
+            expanded = expand_tokens(str(raw_dir), tokens)
+            path = Path(expanded).expanduser()
+            if not path.is_absolute():
+                path = (root / path).resolve()
+            else:
+                path = path.resolve()
+            result.append(path)
+
+        return result
 
     def _parse_output(self, stdout: str) -> dict[str, Any]:
         """Parse CLI output using the configured parser.

@@ -113,15 +113,11 @@ def test_task_tracking_timestamps(project_dir: TestProjectDir):
     assert "claimed_at:" in content
     assert "last_active:" in content
 
-    # Verify timestamps also tracked inside session JSON entry
+    # Verify session metadata exists and is updated.
     session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     session_data = json.loads(session_path.read_text())
-    assert task_id in session_data["tasks"], "Task should be registered in session.tasks"
-    entry = session_data["tasks"][task_id]
-    # Session JSON keeps a lightweight index for UX; the task file is the source of truth
-    # for timestamps.
-    assert "status" in entry
-    assert "owner" in entry
+    assert_json_has_field(session_data, "meta.createdAt")
+    assert_json_has_field(session_data, "meta.lastActive")
 
 
 @pytest.mark.fast
@@ -274,7 +270,7 @@ def test_continuation_id_end_to_end(project_dir: TestProjectDir):
 
 @pytest.mark.fast
 def test_session_task_list_tracking(project_dir: TestProjectDir):
-    """Register multiple tasks in session via real CLIs and verify session.tasks dict keys."""
+    """Register multiple tasks in session via real CLIs and verify session-scoped task files."""
     session_id = "sess-tracking-task-list"
     tasks = [("100", "wave1", "a"), ("150", "wave1", "b"), ("200", "wave1", "c")]
 
@@ -293,12 +289,17 @@ def test_session_task_list_tracking(project_dir: TestProjectDir):
             run_script("tasks/claim", [tid, "--session", session_id], cwd=project_dir.tmp_path)
         )
 
-    session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
-    session_data = json.loads(session_path.read_text())
-    assert isinstance(session_data.get("tasks"), dict)
     for num, wave, slug in tasks:
         tid = f"{num}-{wave}-{slug}"
-        assert tid in session_data["tasks"], f"Expected {tid} in session.tasks"
+        assert_file_exists(
+            project_dir.project_root
+            / "sessions"
+            / "wip"
+            / session_id
+            / "tasks"
+            / "wip"
+            / f"{tid}.md"
+        )
 
 
 @pytest.mark.fast
@@ -377,7 +378,15 @@ def test_complete_tracking_workflow(project_dir: TestProjectDir):
     data = json.loads(session_wip_path.read_text())
     assert_json_has_field(data, "meta.createdAt")
     assert_json_has_field(data, "meta.lastActive")
-    assert task_id in data.get("tasks", {})
+    assert_file_exists(
+        project_dir.project_root
+        / "sessions"
+        / "wip"
+        / session_id
+        / "tasks"
+        / "wip"
+        / f"{task_id}.md"
+    )
 
     # 3) Complete session.
     #

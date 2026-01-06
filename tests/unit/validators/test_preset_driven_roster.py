@@ -28,15 +28,78 @@ def _roster_ids(roster: dict) -> set[str]:
 
 def test_docs_preset_excludes_critical_validators(tmp_path, monkeypatch) -> None:
     setup_project_root(monkeypatch, tmp_path)
+
+    # Tests must not enforce bundled configuration. Define an explicit project config
+    # to make preset inference + validator selection deterministic.
+    cfg_dir = tmp_path / ".edison" / "config"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    (cfg_dir / "validation.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "validation": {
+                    "validators": {
+                        "global-claude": {"enabled": False},
+                        "global-codex": {"enabled": False},
+                        "v-global": {
+                            "name": "Global",
+                            "engine": "delegation",
+                            "wave": "global",
+                            "always_run": True,
+                            "blocking": True,
+                            "triggers": [],
+                        },
+                        "security": {
+                            "name": "Security",
+                            "engine": "delegation",
+                            "wave": "critical",
+                            "always_run": False,
+                            "blocking": True,
+                            "triggers": [],
+                        },
+                        "performance": {
+                            "name": "Performance",
+                            "engine": "delegation",
+                            "wave": "critical",
+                            "always_run": False,
+                            "blocking": True,
+                            "triggers": [],
+                        },
+                    },
+                    "presets": {
+                        "quick": {
+                            "name": "quick",
+                            "validators": [],
+                            "required_evidence": [],
+                            "blocking_validators": [],
+                        },
+                        "standard": {
+                            "name": "standard",
+                            "validators": ["security", "performance"],
+                            "required_evidence": [],
+                            "blocking_validators": ["security", "performance"],
+                        },
+                    },
+                    "presetInference": {
+                        "rules": [
+                            {"patterns": ["docs/**"], "preset": "quick", "priority": 10},
+                            {"patterns": ["src/**"], "preset": "standard", "priority": 20},
+                        ]
+                    },
+                }
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
     task_id = "T-docs-1"
     _seed_impl_report(tmp_path, task_id, ["docs/README.md"])
 
     roster = ValidatorRegistry(project_root=tmp_path).build_execution_roster(task_id)
     ids = _roster_ids(roster)
 
-    # Global validators always run.
-    assert "global-codex" in ids
-    assert "global-claude" in ids
+    # always_run validators always run.
+    assert "v-global" in ids
 
     # Docs-only changes should not schedule critical validators like security/performance by default.
     assert "security" not in ids
@@ -45,14 +108,75 @@ def test_docs_preset_excludes_critical_validators(tmp_path, monkeypatch) -> None
 
 def test_source_preset_includes_critical_validators(tmp_path, monkeypatch) -> None:
     setup_project_root(monkeypatch, tmp_path)
+
+    cfg_dir = tmp_path / ".edison" / "config"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    (cfg_dir / "validation.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "validation": {
+                    "validators": {
+                        "global-claude": {"enabled": False},
+                        "global-codex": {"enabled": False},
+                        "v-global": {
+                            "name": "Global",
+                            "engine": "delegation",
+                            "wave": "global",
+                            "always_run": True,
+                            "blocking": True,
+                            "triggers": [],
+                        },
+                        "security": {
+                            "name": "Security",
+                            "engine": "delegation",
+                            "wave": "critical",
+                            "always_run": False,
+                            "blocking": True,
+                            "triggers": [],
+                        },
+                        "performance": {
+                            "name": "Performance",
+                            "engine": "delegation",
+                            "wave": "critical",
+                            "always_run": False,
+                            "blocking": True,
+                            "triggers": [],
+                        },
+                    },
+                    "presets": {
+                        "quick": {
+                            "name": "quick",
+                            "validators": [],
+                            "required_evidence": [],
+                            "blocking_validators": [],
+                        },
+                        "standard": {
+                            "name": "standard",
+                            "validators": ["security", "performance"],
+                            "required_evidence": [],
+                            "blocking_validators": ["security", "performance"],
+                        },
+                    },
+                    "presetInference": {
+                        "rules": [
+                            {"patterns": ["docs/**"], "preset": "quick", "priority": 10},
+                            {"patterns": ["src/**"], "preset": "standard", "priority": 20},
+                        ]
+                    },
+                }
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
     task_id = "T-src-1"
     _seed_impl_report(tmp_path, task_id, ["src/app.py"])
 
     roster = ValidatorRegistry(project_root=tmp_path).build_execution_roster(task_id)
     ids = _roster_ids(roster)
 
-    assert "global-codex" in ids
-    assert "global-claude" in ids
+    assert "v-global" in ids
 
     # Source changes should select the standard preset and include security/performance.
     assert "security" in ids
@@ -70,8 +194,42 @@ def test_default_preset_overrides_inference(tmp_path, monkeypatch) -> None:
         yaml.safe_dump(
             {
                 "validation": {
+                    "validators": {
+                        "global-claude": {"enabled": False},
+                        "global-codex": {"enabled": False},
+                        "v-global": {
+                            "name": "Global",
+                            "engine": "delegation",
+                            "wave": "global",
+                            "always_run": True,
+                            "blocking": True,
+                            "triggers": [],
+                        },
+                        "security": {
+                            "name": "Security",
+                            "engine": "delegation",
+                            "wave": "critical",
+                            "always_run": False,
+                            "blocking": True,
+                            "triggers": [],
+                        },
+                        "performance": {
+                            "name": "Performance",
+                            "engine": "delegation",
+                            "wave": "critical",
+                            "always_run": False,
+                            "blocking": True,
+                            "triggers": [],
+                        },
+                    },
                     "defaultPreset": "custom-minimal",
                     "presets": {
+                        "standard": {
+                            "name": "standard",
+                            "validators": ["security", "performance"],
+                            "required_evidence": [],
+                            "blocking_validators": ["security", "performance"],
+                        },
                         "custom-minimal": {
                             "name": "custom-minimal",
                             # Intentionally empty: roster should still include always-run globals,
@@ -80,6 +238,11 @@ def test_default_preset_overrides_inference(tmp_path, monkeypatch) -> None:
                             "required_evidence": [],
                             "blocking_validators": [],
                         },
+                    },
+                    "presetInference": {
+                        "rules": [
+                            {"patterns": ["src/**"], "preset": "standard", "priority": 10},
+                        ]
                     },
                 },
             },
@@ -90,6 +253,8 @@ def test_default_preset_overrides_inference(tmp_path, monkeypatch) -> None:
 
     roster = ValidatorRegistry(project_root=tmp_path).build_execution_roster(task_id)
     ids = _roster_ids(roster)
+
+    assert "v-global" in ids
 
     # With defaultPreset set, we should NOT infer standard preset validators.
     assert "security" not in ids
@@ -108,10 +273,20 @@ def test_disabled_validator_is_excluded_from_roster(tmp_path, monkeypatch) -> No
             {
                 "validation": {
                     "validators": {
-                        # These are always_run in core config; project should be able to disable them.
-                        "global-auggie": {"enabled": False},
-                        "global-gemini": {"enabled": False},
+                        "global-claude": {"enabled": False},
+                        "global-codex": {"enabled": False},
+                        "v-disabled": {
+                            "name": "Disabled",
+                            "engine": "delegation",
+                            "wave": "global",
+                            "always_run": True,
+                            "blocking": True,
+                            "enabled": False,
+                            "triggers": [],
+                        },
                     },
+                    "presets": {"standard": {"name": "standard", "validators": [], "required_evidence": [], "blocking_validators": []}},
+                    "presetInference": {"rules": [{"patterns": ["src/**"], "preset": "standard", "priority": 10}]},
                 },
             },
             sort_keys=False,
@@ -122,5 +297,4 @@ def test_disabled_validator_is_excluded_from_roster(tmp_path, monkeypatch) -> No
     roster = ValidatorRegistry(project_root=tmp_path).build_execution_roster(task_id)
     ids = _roster_ids(roster)
 
-    assert "global-auggie" not in ids
-    assert "global-gemini" not in ids
+    assert "v-disabled" not in ids

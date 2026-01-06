@@ -42,6 +42,10 @@ class EngineConfig:
     prompt_flag: str = ""  # used when prompt_mode == "file"
     stdin_prompt_arg: str = "-"  # used when prompt_mode == "stdin" (when CLI needs a sentinel)
     mcp_override_style: str = ""  # optional: client-specific per-invocation MCP overrides
+    writable_dirs: list[str] = field(default_factory=list)  # additional writable directories (--add-dir for codex)
+    run_from_project_root: bool = False  # run from project root instead of worktree (for sandbox access to sibling worktrees)
+    cd_flag: str = ""  # flag to set working directory (e.g., "--cd" for codex, "-C" for git-style CLIs)
+    add_dir_flag: str = ""  # flag to add writable directories (e.g., "--add-dir" for codex)
 
     @classmethod
     def from_dict(cls, engine_id: str, data: dict[str, Any]) -> EngineConfig:
@@ -53,6 +57,12 @@ class EngineConfig:
         pre_flags = data.get("pre_flags", data.get("preFlags", []))
         if not isinstance(pre_flags, list):
             pre_flags = []
+        writable_dirs = data.get("writable_dirs", data.get("writableDirs", []))
+        if not isinstance(writable_dirs, list):
+            writable_dirs = []
+        run_from_project_root = data.get("run_from_project_root", data.get("runFromProjectRoot", False))
+        cd_flag = data.get("cd_flag", data.get("cdFlag", ""))
+        add_dir_flag = data.get("add_dir_flag", data.get("addDirFlag", ""))
 
         return cls(
             id=engine_id,
@@ -68,6 +78,10 @@ class EngineConfig:
             prompt_flag=str(prompt_flag or ""),
             stdin_prompt_arg=str(stdin_prompt_arg or "-"),
             mcp_override_style=str(mcp_override_style or ""),
+            writable_dirs=[str(d).strip() for d in writable_dirs if str(d).strip()],
+            run_from_project_root=bool(run_from_project_root),
+            cd_flag=str(cd_flag or ""),
+            add_dir_flag=str(add_dir_flag or ""),
         )
 
 

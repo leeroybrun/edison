@@ -21,6 +21,27 @@ from edison.cli import (
 SUMMARY = "Display current session status"
 
 
+def _list_session_scoped_records(root: Path) -> dict[str, dict[str, str]]:
+    """Return a lightweight record listing keyed by record id.
+
+    This is derived from the directory layout (SSoT) and is intentionally
+    independent from any session.json indexing.
+    """
+    out: dict[str, dict[str, str]] = {}
+    if not root.exists():
+        return out
+
+    for state_dir in sorted([p for p in root.iterdir() if p.is_dir()], key=lambda p: p.name):
+        state = state_dir.name
+        for md in sorted(state_dir.glob("*.md")):
+            rid = md.stem
+            if not rid:
+                continue
+            out[rid] = {"state": state, "path": str(md)}
+
+    return out
+
+
 def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
     parser.add_argument(
@@ -135,6 +156,13 @@ def main(args: argparse.Namespace) -> int:
             return 0
 
         session = entity.to_dict()
+        try:
+            session_dir = repo.get_path(session_id).parent
+            session["tasks"] = _list_session_scoped_records(session_dir / "tasks")
+            session["qa"] = _list_session_scoped_records(session_dir / "qa")
+        except Exception:
+            # Fail-open: status output should never fail due to directory scanning.
+            pass
 
         if formatter.json_mode:
             formatter.json_output(session)

@@ -175,7 +175,7 @@ class EngineRegistry:
                 "command": "coderabbit",
                 "subcommand": "review",
                 "output_flags": [],
-                "read_only_flags": ["--prompt-only", "--cwd", "{worktree_path}"],
+                "read_only_flags": ["--prompt-only"],
                 "response_parser": "coderabbit",
             },
             "pal-mcp": {
