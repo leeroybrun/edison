@@ -43,16 +43,16 @@ related: [010-related]
     assert ("blocks", "010-blocked") in edges
     assert ("related", "010-related") in edges
 
-    # Saving should write canonical `relationships:` and preserve legacy fields
-    # for back-compat / human readability.
+    # Saving should write canonical `relationships:` only (no legacy relationship
+    # keys), to avoid perpetuating the legacy format.
     repo.save(task)
     content = p.read_text(encoding="utf-8")
     from edison.core.utils.text import parse_frontmatter
 
     fm = parse_frontmatter(content).frontmatter
     assert isinstance(fm.get("relationships"), list)
-    assert fm.get("parent_id") == "010-parent"
-    assert fm.get("child_ids") == ["010-child"]
-    assert fm.get("depends_on") == ["010-dep"]
-    assert fm.get("blocks_tasks") == ["010-blocked"]
-    assert fm.get("related") == ["010-related"]
+    assert fm.get("parent_id") is None
+    assert fm.get("child_ids") is None
+    assert fm.get("depends_on") is None
+    assert fm.get("blocks_tasks") is None
+    assert fm.get("related") is None
