@@ -60,8 +60,16 @@ class EvidenceService:
         if not isinstance(paths, dict):
             paths = {}
 
+        bundle_name = paths.get("bundleSummaryFile", "validation-summary.md")
+        # Writers should never emit the legacy filename; preserve backwards-compat
+        # by reading it when present (see _resolve_bundle_read_path).
+        if bundle_name == self._LEGACY_BUNDLE_SUMMARY:
+            bundle_name = self._CANONICAL_VALIDATION_SUMMARY
+
         return {
-            "bundle": paths.get("bundleSummaryFile", "bundle-summary.md"),
+            # Canonical filename for validation verdict summary.
+            # Backwards-compat reads for the legacy name are handled in read_bundle().
+            "bundle": bundle_name,
             "implementation": paths.get("implementationReportFile", "implementation-report.md"),
         }
 
@@ -146,13 +154,41 @@ class EvidenceService:
     # Bundle I/O (SINGLE SOURCE)
     # -------------------------------------------------------------------------
 
+    _CANONICAL_VALIDATION_SUMMARY = "validation-summary.md"
+    _LEGACY_BUNDLE_SUMMARY = "bundle-summary.md"
+
+    def _resolve_bundle_read_path(self, round_dir: Path) -> Path:
+        """Resolve which bundle/validation summary file to read.
+
+        Preference order:
+        1) Canonical `validation-summary.md` (even if config still points at legacy)
+        2) Configured filename (supports custom bundleSummaryFile)
+        3) Legacy `bundle-summary.md`
+        """
+        canonical = round_dir / self._CANONICAL_VALIDATION_SUMMARY
+        if canonical.exists():
+            return canonical
+
+        configured = round_dir / self.bundle_filename
+        if configured.exists():
+            return configured
+
+        legacy = round_dir / self._LEGACY_BUNDLE_SUMMARY
+        if legacy.exists():
+            return legacy
+
+        # Prefer canonical for "missing file" paths so error messages and CLI guidance
+        # converge on the new filename, while still allowing custom configs to set
+        # a different writer path.
+        return canonical if self.bundle_filename == self._LEGACY_BUNDLE_SUMMARY else configured
+
     def read_bundle(self, round_num: Optional[int] = None) -> Dict[str, Any]:
         """Read bundle summary using configured filename.
 
         This is the SINGLE SOURCE for reading bundle summaries.
         """
         round_dir = self.ensure_round(round_num)
-        bundle_path = round_dir / self.bundle_filename
+        bundle_path = self._resolve_bundle_read_path(round_dir)
 
         return read_structured_report(bundle_path)
 
