@@ -142,6 +142,7 @@ worktrees:
         - ".project/qa/score-history/"
         # Runtime-only session transactions.
         - ".project/sessions/_tx/"
+        - ".project/sessions/_locks/"
         # Edison lock files (runtime-only).
         - ".edison/_locks/"
         - ".edison/session/"
