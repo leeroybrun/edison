@@ -37,6 +37,15 @@ validation:
         - global-claude
         - coderabbit
 
+    coderabbit_only:
+      name: coderabbit_only
+      description: "CodeRabbit-only validation (Edison repo)"
+      validators:
+        - coderabbit
+      # required_evidence is intentionally omitted so baseline evidence applies.
+      blocking_validators:
+        - coderabbit
+
     bundle:
       name: bundle
       description: "Bundle/meta validation (Codex + Claude + CodeRabbit) (Edison repo)"
