@@ -15,6 +15,7 @@ from edison.cli import (
     add_repo_root_flag,
     get_repo_root,
     get_repository,
+    resolve_session_id,
 )
 
 SUMMARY = "List tasks across queues"
@@ -25,6 +26,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--status",
         help="Filter by status",
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Include terminal/final states (e.g., validated)",
     )
     parser.add_argument(
         "--session",
@@ -48,6 +54,8 @@ def main(args: argparse.Namespace) -> int:
     try:
         # Resolve project root
         project_root = get_repo_root(args)
+
+        include_all = bool(getattr(args, "all", False))
 
         # Validate status against config-driven states (do this at runtime to keep CLI startup fast)
         if args.status:
@@ -80,6 +88,32 @@ def main(args: argparse.Namespace) -> int:
         # Filter by session if specified
         if session_id:
             entities = [e for e in entities if e.session_id == session_id]
+        else:
+            # Default behavior: hide terminal states (e.g., validated) unless --all.
+            #
+            # IMPORTANT:
+            # - If the user explicitly filtered by status, respect it.
+            # - If the user explicitly filtered by session, show all states for that session.
+            if not include_all and not args.status:
+                from edison.core.config.domains.workflow import WorkflowConfig
+
+                cfg = WorkflowConfig(repo_root=project_root)
+                final_states = set(cfg.get_final_states(args.type))
+
+                # If running inside a session, surface session-owned records first (all states),
+                # then show other non-terminal records.
+                current_session_id = resolve_session_id(
+                    project_root=project_root,
+                    explicit=None,
+                    required=False,
+                )
+                if current_session_id:
+                    session_entities = [e for e in entities if e.session_id == current_session_id]
+                    other_entities = [e for e in entities if e.session_id != current_session_id]
+                    other_entities = [e for e in other_entities if e.state not in final_states]
+                    entities = session_entities + other_entities
+                else:
+                    entities = [e for e in entities if e.state not in final_states]
 
         if not entities:
             list_text = f"No {args.type}s found"
@@ -87,6 +121,14 @@ def main(args: argparse.Namespace) -> int:
                 list_text += f"\n  (status filter: {args.status})"
             if session_id:
                 list_text += f"\n  (session filter: {session_id})"
+            if not include_all and not args.status and not session_id:
+                from edison.core.config.domains.workflow import WorkflowConfig
+
+                cfg = WorkflowConfig(repo_root=project_root)
+                list_text += (
+                    f"\n  (excluding terminal states: {', '.join(cfg.get_final_states(args.type))})"
+                    "\n  Tip: pass --all to include terminal states."
+                )
         else:
             lines = []
             any_session_scoped = False
@@ -101,6 +143,14 @@ def main(args: argparse.Namespace) -> int:
             if any_session_scoped:
                 list_text += (
                     "\nNote: session-scoped records are stored under `.project/sessions/<state>/<session-id>/...`."
+                )
+            if not include_all and not args.status and not session_id:
+                from edison.core.config.domains.workflow import WorkflowConfig
+
+                cfg = WorkflowConfig(repo_root=project_root)
+                list_text += (
+                    f"\nNote: excluding terminal states ({', '.join(cfg.get_final_states(args.type))}). "
+                    "Pass --all to include them."
                 )
 
         if formatter.json_mode:

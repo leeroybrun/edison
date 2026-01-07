@@ -20,6 +20,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Filter by session status/state (accepts semantic state or directory alias)",
     )
     parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Include terminal/final states (e.g., validated/archived)",
+    )
+    parser.add_argument(
         "--owner",
         help="Filter by session owner",
     )
@@ -33,9 +38,13 @@ def main(args: argparse.Namespace) -> int:
         project_root = get_repo_root(args)
 
         from edison.core.config.domains.session import SessionConfig
+        from edison.core.config.domains.workflow import WorkflowConfig
         from edison.core.session.persistence.repository import SessionRepository
+        from edison.cli import resolve_session_id
 
         repo = SessionRepository(project_root=project_root)
+
+        include_all = bool(getattr(args, "all", False))
 
         if getattr(args, "status", None):
             cfg = SessionConfig(repo_root=project_root)
@@ -47,9 +56,23 @@ def main(args: argparse.Namespace) -> int:
         else:
             sessions = repo.get_all()
 
+        if not getattr(args, "status", None) and not include_all:
+            cfg = WorkflowConfig(repo_root=project_root)
+            final_states = set(cfg.get_final_states("session"))
+            sessions = [s for s in sessions if s.state not in final_states]
+
         if getattr(args, "owner", None):
             owner = str(args.owner)
             sessions = [s for s in sessions if str(getattr(s, "owner", "") or "") == owner]
+
+        current_session_id = resolve_session_id(project_root=project_root, explicit=None, required=False)
+        if current_session_id:
+            # Prefer showing the current session first when listing in-session,
+            # even if ordering would otherwise be arbitrary.
+            for idx, s in enumerate(list(sessions)):
+                if s.id == current_session_id:
+                    sessions.insert(0, sessions.pop(idx))
+                    break
 
         if formatter.json_mode:
             records = []
@@ -79,7 +102,14 @@ def main(args: argparse.Namespace) -> int:
             return 0
 
         if not sessions:
-            formatter.text("No sessions found")
+            text = "No sessions found"
+            if not getattr(args, "status", None) and not include_all:
+                cfg = WorkflowConfig(repo_root=project_root)
+                text += (
+                    f"\n  (excluding terminal states: {', '.join(cfg.get_final_states('session'))})"
+                    "\n  Tip: pass --all to include terminal sessions."
+                )
+            formatter.text(text)
             return 0
 
         lines = []
@@ -98,7 +128,14 @@ def main(args: argparse.Namespace) -> int:
             suffix = f" ({', '.join(suffix_parts)})" if suffix_parts else ""
             lines.append(f"  {s.id} [{s.state}]{suffix}")
 
-        formatter.text(f"Found {len(sessions)} session(s):\n" + "\n".join(lines))
+        text = f"Found {len(sessions)} session(s):\n" + "\n".join(lines)
+        if not getattr(args, "status", None) and not include_all:
+            cfg = WorkflowConfig(repo_root=project_root)
+            text += (
+                f"\nNote: excluding terminal states ({', '.join(cfg.get_final_states('session'))}). "
+                "Pass --all to include them."
+            )
+        formatter.text(text)
         return 0
     except Exception as exc:
         formatter.error(exc, error_code="session_list_error")

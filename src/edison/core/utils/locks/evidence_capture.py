@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import time
@@ -12,7 +11,7 @@ from typing import Any, Iterator
 
 from edison.core.utils.io.locking import LockTimeoutError, acquire_file_lock
 from edison.core.utils.paths.management import get_management_paths
-from edison.core.utils.time import utc_timestamp
+from edison.core.utils.locks.file_metadata import write_lock_metadata
 
 
 def _slug(value: str) -> str:
@@ -55,20 +54,16 @@ def acquire_evidence_capture_lock(
             repo_root=project_root,
         ) as fh:
             waited_ms = int((time.monotonic() - start) * 1000)
-            meta = {
-                "pid": os.getpid(),
-                "sessionId": session_id or "",
-                "commandGroup": str(command_group),
-                "acquiredAt": utc_timestamp(),
-            }
             try:
                 if fh is not None:
-                    fh.seek(0)
-                    fh.truncate(0)
-                    fh.write(json.dumps(meta, sort_keys=True))
-                    fh.write("\n")
-                    fh.flush()
-                    os.fsync(fh.fileno())
+                    write_lock_metadata(
+                        fh,
+                        pid=os.getpid(),
+                        meta={
+                            "sessionId": session_id or "",
+                            "commandGroup": str(command_group),
+                        },
+                    )
             except Exception:
                 # Best-effort metadata; lock safety comes from OS lock, not the file contents.
                 pass
@@ -92,4 +87,3 @@ def acquire_evidence_capture_lock(
 
 
 __all__ = ["acquire_evidence_capture_lock", "evidence_capture_lock_path"]
-

@@ -50,10 +50,29 @@ worktrees:
         commitAllowed: true
       - path: ".project/qa"
         scopes: ["primary", "session"]
-        commitAllowed: true
+        # `.project/qa` contains both committable reports and runtime state (locks/snapshots).
+        # Fail-closed: allow only the specific subtrees we want on the meta branch.
+        commitAllowed: false
+        commitAllowPrefixes:
+          - ".project/qa/waiting/"
+          - ".project/qa/todo/"
+          - ".project/qa/wip/"
+          - ".project/qa/done/"
+          - ".project/qa/validated/"
+          - ".project/qa/validation-reports/"
+          - ".project/qa/audit-reports/"
       - path: ".project/sessions"
         scopes: ["primary", "session"]
-        commitAllowed: true
+        # Sessions are committable, but `_tx` is runtime-only and should never land.
+        commitAllowed: false
+        commitAllowPrefixes:
+          - ".project/sessions/draft/"
+          - ".project/sessions/wip/"
+          - ".project/sessions/done/"
+          - ".project/sessions/blocked/"
+          - ".project/sessions/validated/"
+          - ".project/sessions/recovery/"
+          - ".project/sessions/archived/"
       - path: ".project/logs"
         scopes: ["primary", "session"]
         commitAllowed: false
@@ -110,6 +129,14 @@ worktrees:
       meta:
         - ".project/logs/"
         - ".project/archive/"
+        # Runtime-only QA state. Validation reports are stored separately and are committable.
+        - ".project/qa/locks/"
+        - ".project/qa/evidence-snapshots/"
+        - ".project/qa/score-history/"
+        # Mandatory migration: legacy location is read-only compat; ignore any new writes.
+        - ".project/qa/validation-evidence/"
+        # Runtime-only session transactions.
+        - ".project/sessions/_tx/"
         - ".edison/_generated/"
         - ".edison/_generated.__tmp__*"
         # Ignore Codex runtime noise in meta, but keep prompts visible/trackable.

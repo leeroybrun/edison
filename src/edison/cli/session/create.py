@@ -16,6 +16,7 @@ from edison.core.exceptions import SessionError
 from edison.core.session import lifecycle as session_manager
 from edison.core.session.core.id import validate_session_id
 from edison.core.session.core.naming import generate_session_id
+from edison.core.session.presentation import worktree_confinement_lines
 
 SUMMARY = "Create a new Edison session"
 
@@ -107,26 +108,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     )
     add_json_flag(parser)
     add_repo_root_flag(parser)
-
-
-def _emit_worktree_instructions(
-    formatter: OutputFormatter,
-    *,
-    session_id: str,
-    worktree_path: str | None,
-) -> None:
-    if not worktree_path:
-        return
-    formatter.text("")
-    formatter.text("WORKTREE CONFINEMENT (CRITICAL)")
-    formatter.text(f"  cd {worktree_path}")
-    formatter.text(f"  export AGENTS_SESSION={session_id}")
-    formatter.text(f"  export AGENTS_PROJECT_ROOT={worktree_path}")
-    formatter.text("  Never run `git checkout` / `git switch` in the primary checkout.")
-    formatter.text(
-        "  Never run `git reset` / `git restore` / `git clean` unless explicitly requested."
-    )
-    formatter.text("  Do all code changes inside the session worktree directory only.")
 
 
 def _resolve_install_cmd(cwd: Path) -> list[str]:
@@ -302,9 +283,11 @@ def main(args: argparse.Namespace) -> int:
             elif worktree_path:
                 formatter.text("  Pinned: No (worktree .session-id file not created)")
 
-            _emit_worktree_instructions(
-                formatter, session_id=session_id, worktree_path=worktree_path
-            )
+            confinement = worktree_confinement_lines(session_id=session_id, worktree_path=worktree_path)
+            if confinement:
+                formatter.text("")
+                for line in confinement:
+                    formatter.text(line)
 
             if getattr(args, "start_prompt", None):
                 from edison.core.session.start_prompts import read_start_prompt

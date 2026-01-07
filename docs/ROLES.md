@@ -60,6 +60,7 @@ edison task split <task-id>                  # Split task into subtasks
 
 #### QA Management
 ```bash
+edison qa list                          # List QA briefs
 edison qa new <task-id> --session <id>   # Create QA brief
 edison qa promote --task <id> --to <state>   # Promote QA state
 edison qa bundle <task-id>                   # Create validation bundle

@@ -17,6 +17,7 @@ from edison.cli import (
     get_repo_root,
     resolve_session_id,
 )
+from edison.core.session.presentation import build_worktree_presentation, worktree_confinement_lines
 
 SUMMARY = "Display current session status"
 
@@ -176,6 +177,37 @@ def main(args: argparse.Namespace) -> int:
             owner = session.get("owner") or session.get("meta", {}).get("owner")
             if owner:
                 formatter.text(f"Owner: {owner}")
+
+            pres = build_worktree_presentation(session_id=session_id, session=session)
+            if pres.worktree_path:
+                formatter.text(f"Worktree: {pres.worktree_path}")
+            if pres.branch_name:
+                formatter.text(f"Branch: {pres.branch_name}")
+            if pres.base_branch:
+                formatter.text(f"Base: {pres.base_branch}")
+            if pres.worktree_path:
+                if pres.worktree_pinned and pres.session_id_file_path:
+                    formatter.text(f"Pinned: .session-id written to {pres.session_id_file_path}")
+                else:
+                    formatter.text("Pinned: No (worktree .session-id file not created)")
+
+                show_confinement = True
+                try:
+                    wt = Path(pres.worktree_path).resolve()
+                    cwd = Path.cwd().resolve()
+                    if cwd == wt or cwd.is_relative_to(wt):
+                        show_confinement = False
+                except Exception:
+                    show_confinement = True
+
+                if show_confinement:
+                    confinement = worktree_confinement_lines(
+                        session_id=session_id, worktree_path=pres.worktree_path
+                    )
+                    if confinement:
+                        formatter.text("")
+                        for line in confinement:
+                            formatter.text(line)
 
             # Archived worktrees section (deterministic newest-first ordering).
             try:

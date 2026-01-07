@@ -391,3 +391,51 @@ class TestSessionResolutionFromWorktree:
         assert code == 0
         status_payload = json.loads(captured.out or "{}")
         assert status_payload.get("id") == session_id, "Session should be resolved via .session-id file"
+
+    def test_session_status_from_primary_shows_worktree_details_when_env_set(
+        self,
+        isolated_project_env: Path,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When running from primary checkout, session status should include worktree instructions."""
+        _enable_worktrees(isolated_project_env, tmp_path)
+
+        from edison.cli._dispatcher import main as cli_main
+
+        session_id = "test-session-status-shows-worktree"
+
+        # Create session and read worktree path.
+        code = cli_main(
+            [
+                "session",
+                "create",
+                "--session-id",
+                session_id,
+                "--owner",
+                "tester",
+                "--json",
+            ]
+        )
+        captured = capsys.readouterr()
+        assert code == 0
+
+        payload = json.loads(captured.out or "{}")
+        worktree_path = payload.get("session", {}).get("git", {}).get("worktreePath")
+        assert worktree_path is not None
+
+        # Simulate primary checkout invocation with explicit session env var.
+        monkeypatch.setenv("AGENTS_SESSION", session_id)
+        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(isolated_project_env))
+        monkeypatch.chdir(isolated_project_env)
+
+        code = cli_main(["session", "status"])
+        captured = capsys.readouterr()
+
+        assert code == 0
+        out = captured.out
+        assert f"Worktree: {worktree_path}" in out
+        assert "WORKTREE CONFINEMENT (CRITICAL)" in out
+        assert f"  cd {worktree_path}" in out
+        assert "Pinned:" in out

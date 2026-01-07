@@ -353,6 +353,7 @@ edison session list [options]
 | Option | Description |
 |--------|-------------|
 | `--status <state>` | Filter by session status/state (accepts semantic state like `active` or directory alias like `wip`) |
+| `--all` | Include terminal/final session states (e.g., `validated`/`archived`) |
 | `--owner <owner>` | Filter by session owner |
 | `--json` | Output as JSON |
 | `--repo-root` | Override repository root path |
@@ -360,7 +361,9 @@ edison session list [options]
 **Examples:**
 
 ```bash
+# Default: excludes terminal sessions
 edison session list
+edison session list --all
 edison session list --status wip
 edison session list --status active
 ```
@@ -1264,6 +1267,10 @@ edison task list [options]
 
 | Option | Description |
 |--------|-------------|
+| `--status <state>` | Filter by task/QA state |
+| `--session <session-id>` | Filter to a specific session (shows all states for that session) |
+| `--type <task|qa>` | Record type (default: `task`) |
+| `--all` | Include terminal/final states (e.g., `validated`) |
 | `--json` | Output as JSON |
 | `--repo-root` | Override repository root path |
 
@@ -1276,8 +1283,16 @@ edison task list [options]
 **Examples:**
 
 ```bash
-# List all tasks
+# Default: excludes terminal tasks
 edison task list
+edison task list --all
+
+# Filter by state
+edison task list --status wip
+edison task list --status validated
+
+# List QA briefs across queues
+edison task list --type qa
 
 # Get JSON output
 edison task list --json
@@ -1501,6 +1516,33 @@ edison task cleanup_stale_locks
 ## QA Domain
 
 Quality Assurance commands for validation, evidence collection, and approval workflows.
+
+### qa list - List QA Briefs
+
+List QA briefs across queues.
+
+```bash
+edison qa list [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--status <state>` | Filter by QA state |
+| `--session <session-id>` | Filter to a specific session (shows all states for that session) |
+| `--all` | Include terminal/final states (e.g., `validated`) |
+| `--json` | Output as JSON |
+| `--repo-root` | Override repository root path |
+
+**Examples:**
+
+```bash
+# Default: excludes terminal QA briefs
+edison qa list
+edison qa list --all
+edison qa list --status wip
+```
 
 ### qa new - Create QA Brief
 

@@ -41,6 +41,22 @@ def _parse_pid(text: str) -> Optional[int]:
             return int(value)
         except ValueError:
             return None
+
+    # Support JSON lock metadata (Edison QA/evidence locks write JSON blobs).
+    #
+    # We deliberately only parse a top-level `pid` field to keep this safe and
+    # deterministic (no schema coupling, no deep traversal).
+    try:
+        import json
+
+        raw = text.strip()
+        if not raw:
+            return None
+        obj = json.loads(raw)
+        if isinstance(obj, dict) and "pid" in obj:
+            return int(obj["pid"])
+    except Exception:
+        return None
     return None
 
 
@@ -132,4 +148,3 @@ def cleanup_stale_locks(
 
 
 __all__ = ["StaleLock", "cleanup_stale_locks", "find_stale_locks", "inspect_lock"]
-
