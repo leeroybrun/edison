@@ -12,6 +12,7 @@ import pytest
 
 from edison.cli._dispatcher import (
     _get_active_packs_fast,
+    _rewrite_deprecated_invocations,
     _resolve_fast_command_module,
     _strip_profile_flag,
     build_parser,
@@ -172,3 +173,21 @@ def test_cli_rules_precheck_detects_core_rule_for_task_claim(tmp_path: Path) -> 
     project_root.mkdir(parents=True)
     (project_root / ".edison" / "config").mkdir(parents=True, exist_ok=True)
     assert _get_active_packs_fast(project_root) == []
+
+
+def test_evidence_help_does_not_advertise_deprecated_init(capsys: pytest.CaptureFixture[str]) -> None:
+    parser = build_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args(["evidence", "--help"])
+    out = capsys.readouterr().out
+    # Deprecated commands should not be advertised in help output.
+    assert "\n  init" not in out
+    assert "Initialize evidence directories" not in out
+
+
+def test_rewrite_deprecated_evidence_init_invocation() -> None:
+    argv, deprecated = _rewrite_deprecated_invocations(["evidence", "init", "some-task-id", "--json"])
+    assert deprecated == "evidence init"
+    assert argv[:3] == ["qa", "round", "prepare"]
+    assert argv[3] == "some-task-id"
+    assert "--json" in argv

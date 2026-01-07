@@ -627,6 +627,19 @@ def _strip_profile_flag(argv: list[str]) -> tuple[list[str], bool]:
     return out, enabled
 
 
+def _rewrite_deprecated_invocations(argv: list[str]) -> tuple[list[str], str | None]:
+    """Rewrite deprecated CLI invocations to their supported equivalents.
+
+    We remove deprecated subcommands from discovery/help to keep the CLI crisp,
+    but we still accept their old spellings for backwards compatibility.
+    """
+    if len(argv) >= 2 and argv[0] == "evidence" and argv[1] == "init":
+        # `edison evidence init <task> ...` -> `edison qa round prepare <task> ...`
+        return ["qa", "round", "prepare", *argv[2:]], "evidence init"
+
+    return argv, None
+
+
 def _is_help_requested(argv: list[str]) -> bool:
     return any(a in ("-h", "--help") for a in argv)
 
@@ -756,6 +769,13 @@ def main(argv: list[str] | None = None) -> int:
         argv = sys.argv[1:]
 
     argv, profile_enabled = _strip_profile_flag(list(argv))
+    argv, deprecated = _rewrite_deprecated_invocations(list(argv))
+    if deprecated and not _is_help_requested(argv) and "--json" not in argv:
+        print(
+            f"Deprecated: `edison {deprecated}` is no longer part of the workflow. "
+            "Redirecting to `edison qa round prepare ...`.",
+            file=sys.stderr,
+        )
 
     profiler = Profiler() if profile_enabled else None
     ctx = enable_profiler(profiler) if profiler else None

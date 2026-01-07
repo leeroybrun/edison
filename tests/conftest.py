@@ -411,6 +411,27 @@ def isolated_project_env(tmp_path, monkeypatch, _isolated_project_template_dir: 
     monkeypatch.delenv("EDISON_paths__project_config_dir", raising=False)
     monkeypatch.chdir(repo_root)
 
+    # Stub external CLIs that should never hit network during tests.
+    # CodeRabbit's real CLI can take minutes and may require auth; tests should be deterministic.
+    try:
+        import os
+        import stat
+
+        bin_dir = tmp_path / ".fake-bin"
+        bin_dir.mkdir(parents=True, exist_ok=True)
+        coderabbit = bin_dir / "coderabbit"
+        coderabbit.write_text(
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "sys.stdout.write('review completed\\nType: suggestion\\n')\n"
+            "sys.exit(0)\n",
+            encoding="utf-8",
+        )
+        coderabbit.chmod(coderabbit.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH','')}")
+    except Exception:
+        pass
+
     # Ensure PathResolver uses this isolated root for the duration of the test
     try:
         import edison.core.utils.paths.resolver as paths  # type: ignore
