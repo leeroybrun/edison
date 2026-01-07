@@ -57,6 +57,11 @@ def is_mutating_invocation(command_name: str, args: argparse.Namespace) -> bool:
         sub = str(getattr(args, "subcommand", "") or "")
         return sub in {"start", "heartbeat", "complete"}
 
+    # session continuation: show is read-only; set/clear mutate session metadata.
+    if command_name == "session continuation":
+        sub = str(getattr(args, "subcommand", "") or "")
+        return sub in {"set", "clear"}
+
     # session next / verify are read-only by design.
     if command_name in {"session next", "session verify"}:
         return False

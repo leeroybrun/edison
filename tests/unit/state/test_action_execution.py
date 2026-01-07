@@ -12,7 +12,6 @@ The test verifies:
 """
 import pytest
 from typing import Any, Dict, List
-from unittest.mock import MagicMock
 
 from edison.core.state import RichStateMachine, StateTransitionError
 from edison.core.state.guards import GuardRegistry

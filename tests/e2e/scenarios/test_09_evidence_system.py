@@ -393,6 +393,12 @@ def test_evidence_complete_workflow(project_dir: TestProjectDir):
 @pytest.mark.fast
 def test_validator_bundle_approval(project_dir: TestProjectDir):
     """Validator bundle validation with REAL CLI - all validators approve."""
+    from edison.core.config.manager import ConfigManager
+
+    cfg = ConfigManager(repo_root=project_dir.tmp_path).load_config()
+    bundle_summary_name = cfg.get("validation", {}).get("artifactPaths", {}).get("bundleSummaryFile")
+    assert bundle_summary_name
+
     task_num, wave, slug = "550", "wave1", "validator-bundle"
     task_id = f"{task_num}-{wave}-{slug}"
     session_id = "test-validator-bundle"
@@ -422,6 +428,7 @@ def test_validator_bundle_approval(project_dir: TestProjectDir):
     for validator_id, model in [
         ("global-codex", "codex"),
         ("global-claude", "claude"),
+        ("coderabbit", "coderabbit"),
         ("security", "codex"),
         ("performance", "codex"),
         ("prisma", "codex"),
@@ -450,10 +457,10 @@ def test_validator_bundle_approval(project_dir: TestProjectDir):
 
     validate_result = run_script("validators/validate", [task_id, "--check-only"], cwd=project_dir.tmp_path)
     assert_command_success(validate_result)
-    assert_output_contains(validate_result, "bundle-summary.md was written", in_stderr=False)
+    assert_output_contains(validate_result, f"{bundle_summary_name} was written", in_stderr=False)
 
-    # Verify bundle-summary.md was created
-    bundle_file = rd / "bundle-summary.md"
+    # Verify bundle summary was created
+    bundle_file = rd / bundle_summary_name
     assert_file_exists(bundle_file)
 
     # Verify bundle structure matches REAL CLI output
@@ -468,6 +475,12 @@ def test_validator_bundle_approval(project_dir: TestProjectDir):
 @pytest.mark.fast
 def test_validator_bundle_one_blocking_fails(project_dir: TestProjectDir):
     """REAL CLI consensus test: one blocking validator fails → approved: false."""
+    from edison.core.config.manager import ConfigManager
+
+    cfg = ConfigManager(repo_root=project_dir.tmp_path).load_config()
+    bundle_summary_name = cfg.get("validation", {}).get("artifactPaths", {}).get("bundleSummaryFile")
+    assert bundle_summary_name
+
     task_num, wave, slug = "560", "wave1", "one-blocking-fails"
     task_id = f"{task_num}-{wave}-{slug}"
     session_id = "test-one-blocking-fails"
@@ -496,7 +509,7 @@ def test_validator_bundle_one_blocking_fails(project_dir: TestProjectDir):
     for validator_id, model, verdict in [
         ("global-codex", "codex", "approve"),
         ("global-claude", "claude", "approve"),
-        ("security", "codex", "reject"),  # BLOCKING VALIDATOR FAILS
+        ("coderabbit", "coderabbit", "reject"),  # BLOCKING VALIDATOR FAILS
         ("performance", "codex", "approve"),
         ("prisma", "codex", "approve"),
         ("testing", "codex", "approve"),
@@ -526,8 +539,8 @@ def test_validator_bundle_one_blocking_fails(project_dir: TestProjectDir):
     assert_command_failure(validate_result)  # Should fail because security rejected
     assert_output_contains(validate_result, "Bundle NOT approved", in_stderr=False)
 
-    # Verify bundle-summary.md shows approved: false
-    bundle_file = rd / "bundle-summary.md"
+    # Verify bundle summary shows approved: false
+    bundle_file = rd / bundle_summary_name
     assert_file_exists(bundle_file)
     bundle_data = parse_frontmatter(bundle_file.read_text()).frontmatter
     assert bundle_data["taskId"] == task_id

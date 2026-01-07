@@ -320,22 +320,36 @@ def has_all_waves_passed(ctx: Mapping[str, Any]) -> bool:
         if isinstance(session_obj, Mapping):
             session_id = session_obj.get("id")
 
+        # Normalize to None when unset/blank to avoid treating "" as a real session id.
+        session_id = str(ctx.get("session_id") or session_id or "").strip() or None
+
         roster = registry.build_execution_roster(
             task_id=str(task_id),
-            session_id=str(ctx.get("session_id") or session_id or ""),
+            session_id=session_id,
             wave=None,
             extra_validators=None,
         )
-        expected_ids = {
-            str(v.get("id"))
-            for v in (
-                (roster.get("alwaysRequired") or [])
-                + (roster.get("triggeredBlocking") or [])
-                + (roster.get("triggeredOptional") or [])
-                + (roster.get("extraAdded") or [])
-            )
-            if isinstance(v, Mapping) and v.get("id")
-        }
+        candidates = (
+            (roster.get("alwaysRequired") or [])
+            + (roster.get("triggeredBlocking") or [])
+            + (roster.get("triggeredOptional") or [])
+            + (roster.get("extraAdded") or [])
+        )
+        # Group blocking validators by wave, using roster-resolved blocking flags
+        # (preset-level overrides must apply here).
+        wave_blocking: dict[str, list[str]] = {}
+        for item in candidates:
+            if not isinstance(item, Mapping):
+                continue
+            vid = str(item.get("id") or "").strip()
+            if not vid or not item.get("blocking"):
+                continue
+            wave_name = str(item.get("wave") or "").strip()
+            if not wave_name:
+                continue
+            wave_blocking.setdefault(wave_name, []).append(vid)
+        # De-dupe per wave
+        wave_blocking = {k: sorted(set(v)) for k, v in wave_blocking.items()}
 
         v = read_validator_reports(str(task_id))
         reports = v.get("reports", [])
@@ -350,21 +364,19 @@ def has_all_waves_passed(ctx: Mapping[str, Any]) -> bool:
 
         previous_wave_passed = True
         for wave in waves:
-            wave_name = str(wave.get("name") or "")
+            wave_name = str(wave.get("name") or "").strip()
             if not wave_name:
                 return False  # FAIL-CLOSED
             if wave.get("requires_previous_pass") and not previous_wave_passed:
                 return False
 
-            wave_validators = [v for v in registry.get_by_wave(wave_name) if v.id in expected_ids]
-            blocking_ids = [v.id for v in wave_validators if v.blocking]
-
+            blocking_ids = wave_blocking.get(wave_name, [])
             wave_passed = True
             for vid in blocking_ids:
                 if vid not in verdicts or not verdicts[vid]:
                     wave_passed = False
-                    if not wave.get("continue_on_fail", False):
-                        return False
+                    # For promotion gating, any missing/failing blocking validator fails the wave.
+                    return False
 
             previous_wave_passed = wave_passed
 

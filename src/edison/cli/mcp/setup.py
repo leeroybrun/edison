@@ -61,6 +61,7 @@ def main(args: argparse.Namespace) -> int:
 
     project_root = Path(args.project_path).expanduser().resolve()
     server_ids = normalize_servers(args.servers)
+    effective_dry_run = bool(args.dry_run) or bool(args.check)
 
     try:
         target_path, servers, setup = build_mcp_servers(project_root)
@@ -96,11 +97,15 @@ def main(args: argparse.Namespace) -> int:
         config_file=args.config_file or target_path,
         server_ids=list(servers.keys()),
         overwrite=True,
-        dry_run=args.dry_run,
+        dry_run=effective_dry_run,
     )
 
     if args.dry_run:
         formatter.json_output(result)
+        return 0
+
+    if args.check:
+        formatter.text("✅ MCP setup check complete (no files written)")
         return 0
 
     meta = result.get("_meta", {})

@@ -174,8 +174,30 @@ class ValidationPolicyResolver:
         # Infer preset from changed files
         result = self.inference.infer_preset(changed_files)
 
+        # Meta-task escalation: tasks with children should default to strict validation.
+        #
+        # Rationale: meta tasks typically represent a bundle of child work and may have
+        # ambiguous or empty "changed files" context (e.g., no direct implementation report).
+        # In that situation, defaulting to a stricter preset prevents accidental validation
+        # downgrades for bundle approvals.
+        inferred_name = result.preset_name
+        was_escalated = result.was_escalated
+        escalation_reason = result.escalation_reason
+        if inferred_name != "strict" and "strict" in self._presets:
+            try:
+                from edison.core.task.repository import TaskRepository
+
+                task = TaskRepository(project_root=self.project_root).get(task_id)
+                if task and list(task.child_ids or []):
+                    inferred_name = "strict"
+                    was_escalated = True
+                    escalation_reason = "Escalated to strict for meta task (has children)"
+            except Exception:
+                # Fail-open: do not block policy resolution if task metadata cannot be read.
+                pass
+
         # Get the inferred preset
-        preset = self._presets.get(result.preset_name)
+        preset = self._presets.get(inferred_name)
         if not preset:
             # Fallback to standard if inferred preset not configured
             preset = self._presets.get("standard")
@@ -193,9 +215,9 @@ class ValidationPolicyResolver:
             preset=_resolve_required_evidence(preset),
             task_id=task_id,
             changed_files=changed_files,
-            inferred_preset_name=result.preset_name,
-            was_escalated=result.was_escalated,
-            escalation_reason=result.escalation_reason,
+            inferred_preset_name=inferred_name,
+            was_escalated=was_escalated,
+            escalation_reason=escalation_reason,
         )
 
     def get_preset(self, name: str) -> Optional[ValidationPreset]:

@@ -11,6 +11,7 @@ Directory conventions:
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from pathlib import Path
@@ -52,9 +53,13 @@ class LayerDiscovery:
         project_dir: Optional[Path] = None,
         exclude_globs: Optional[List[str]] = None,
         allow_shadowing: bool = False,
+        vendor_roots: Optional[List[Tuple[str, Path]]] = None,
     ) -> None:
         self.content_type = content_type
         self.core_dir = core_dir
+        # Vendor roots in low→high precedence order.
+        # Precedence: core < vendors < packs < overlay layers.
+        self.vendor_roots = list(vendor_roots or [])
         # Pack roots in low→high precedence order (bundled → user → project).
         self.pack_roots = list(pack_roots)
         # Overlay layers in low→high precedence order (e.g., company → user → project).
@@ -71,6 +76,8 @@ class LayerDiscovery:
         self.exclude_globs = list(exclude_globs or [])
         self.allow_shadowing = allow_shadowing
         self._core_cache: Optional[Dict[str, LayerSource]] = None
+        self._vendor_new_cache: Dict[str, Dict[str, LayerSource]] = {}
+        self._vendor_overlay_cache: Dict[str, Dict[str, LayerSource]] = {}
         self._pack_new_cache: Dict[Tuple[str, str], Dict[str, LayerSource]] = {}
         self._pack_overlay_cache: Dict[Tuple[str, str], Dict[str, LayerSource]] = {}
         self._layer_new_cache: Dict[str, Dict[str, LayerSource]] = {}
@@ -96,18 +103,39 @@ class LayerDiscovery:
             if fnmatch(rel, pat):
                 return True
         return False
+
+    def _iter_matching_files(
+        self, root_dir: Path, *, exclude_dirnames: Set[str] | None = None
+    ):
+        """Yield files under root_dir matching file_pattern without following symlinks."""
+        exclude_dirnames = exclude_dirnames or set()
+        for dirpath, dirnames, filenames in os.walk(root_dir, followlinks=False):
+            dirpath_path = Path(dirpath)
+            # Prune excluded directories and symlinked directories.
+            dirnames[:] = [
+                d
+                for d in dirnames
+                if d not in exclude_dirnames and not (dirpath_path / d).is_symlink()
+            ]
+            for filename in filenames:
+                if not fnmatch(filename, self.file_pattern):
+                    continue
+                path = dirpath_path / filename
+                if path.is_symlink():
+                    continue
+                yield path
     
     def discover_core(self) -> Dict[str, LayerSource]:
         """Discover all core entity definitions."""
         if self._core_cache is not None:
-            return dict(self._core_cache)
+            return self._core_cache
 
         entities: Dict[str, LayerSource] = {}
         type_dir = self.core_dir / self.content_type
         
         if not type_dir.exists():
             self._core_cache = entities
-            return dict(entities)
+            return entities
         
         # Support both flat and nested structures
         for path in type_dir.rglob(self.file_pattern):
@@ -125,19 +153,186 @@ class LayerDiscovery:
             )
         
         self._core_cache = entities
-        return dict(entities)
+        return entities
+
+    # =========================================================================
+    # Vendor Discovery (core < vendors < packs < overlay layers)
+    # =========================================================================
+
+    def _scan_vendor_new(self, vendor_path: Path, vendor_name: str) -> Dict[str, LayerSource]:
+        """Scan vendor root for new entity definitions."""
+        cached = self._vendor_new_cache.get(vendor_name)
+        if cached is not None:
+            return cached
+
+        entities: Dict[str, LayerSource] = {}
+        type_dir = vendor_path / self.content_type
+        if not type_dir.exists():
+            self._vendor_new_cache[vendor_name] = entities
+            return entities
+
+        for path in self._iter_matching_files(type_dir, exclude_dirnames={"overlays"}):
+            if self._is_excluded(type_dir, path):
+                continue
+            name = self._entity_key(type_dir, path)
+            entities[name] = LayerSource(
+                path=path,
+                layer=f"vendor:{vendor_name}",
+                is_overlay=False,
+                entity_name=name,
+            )
+
+        self._vendor_new_cache[vendor_name] = entities
+        return entities
+
+    def _scan_vendor_overlays(self, vendor_path: Path, vendor_name: str) -> Dict[str, LayerSource]:
+        """Scan vendor root for overlay definitions."""
+        cached = self._vendor_overlay_cache.get(vendor_name)
+        if cached is not None:
+            return cached
+
+        entities: Dict[str, LayerSource] = {}
+        overlays_dir = vendor_path / self.content_type / "overlays"
+        if not overlays_dir.exists():
+            self._vendor_overlay_cache[vendor_name] = entities
+            return entities
+
+        for path in self._iter_matching_files(overlays_dir):
+            if self._is_excluded(overlays_dir, path):
+                continue
+            name = self._entity_key(overlays_dir, path)
+            entities[name] = LayerSource(
+                path=path,
+                layer=f"vendor:{vendor_name}",
+                is_overlay=True,
+                entity_name=name,
+            )
+
+        self._vendor_overlay_cache[vendor_name] = entities
+        return entities
+
+    def discover_vendor(
+        self,
+        existing: Optional[Set[str]] = None,
+    ) -> Dict[str, LayerSource]:
+        """Discover new entities from all vendor roots.
+
+        Vendor entities that would shadow existing entities raise an error
+        unless allow_shadowing is True.
+
+        Args:
+            existing: Set of already-discovered entity names (e.g., from core).
+                     If None, starts with an empty set.
+
+        Returns:
+            Dict mapping entity names to LayerSource from vendor layers.
+        """
+        if existing is None:
+            existing = set()
+
+        result: Dict[str, LayerSource] = {}
+        for vendor_name, vendor_path in self.vendor_roots:
+            new_map = self._scan_vendor_new(vendor_path, vendor_name)
+            for name, src in new_map.items():
+                # Check shadowing against both existing and previously found vendor entities
+                if (name in existing or name in result) and not self.allow_shadowing:
+                    raise CompositionValidationError(
+                        f"Vendor file '{src.path}' shadows existing {self.content_type} '{name}'.\n"
+                        f"To extend an existing {self.content_type}, place the file in "
+                        f"'{vendor_path / self.content_type}/overlays/'.\n"
+                        f"To create a NEW {self.content_type}, use a unique name."
+                    )
+                result[name] = src
+                existing.add(name)
+
+        return result
+
+    def discover_vendor_overlays(
+        self,
+        existing: Set[str],
+    ) -> Dict[str, LayerSource]:
+        """Discover overlays from all vendor roots.
+
+        Overlays must reference entities that exist in lower-precedence layers.
+
+        Args:
+            existing: Set of known entity names from core + earlier vendors.
+
+        Returns:
+            Dict mapping entity names to LayerSource (overlays only).
+        """
+        result: Dict[str, LayerSource] = {}
+        for vendor_name, vendor_path in self.vendor_roots:
+            over_map = self._scan_vendor_overlays(vendor_path, vendor_name)
+            for name, src in over_map.items():
+                if name not in existing:
+                    raise CompositionValidationError(
+                        f"Vendor overlay '{src.path}' references non-existent {self.content_type} '{name}'.\n"
+                        f"Available {self.content_type}: {sorted(existing)}\n"
+                        f"To create a NEW {self.content_type}, place the file in "
+                        f"'{vendor_path / self.content_type}/' (not overlays/)."
+                    )
+                result[name] = src
+
+        return result
+
+    def iter_vendor_layers(
+        self,
+        existing: Set[str],
+    ) -> List[Tuple[str, Dict[str, LayerSource], Dict[str, LayerSource]]]:
+        """Discover vendor new+overlay sources across all vendor roots in order.
+
+        Mutates ``existing`` to include newly discovered vendor-defined entities
+        so later vendors and overlays can reference them.
+
+        Returns:
+            List of (vendor_name, new_entities, overlay_entities) tuples.
+        """
+        results: List[Tuple[str, Dict[str, LayerSource], Dict[str, LayerSource]]] = []
+
+        for vendor_name, vendor_path in self.vendor_roots:
+            new_map = self._scan_vendor_new(vendor_path, vendor_name)
+            # Validate: vendor new must NOT shadow existing.
+            for name, src in new_map.items():
+                if name in existing and not self.allow_shadowing:
+                    raise CompositionValidationError(
+                        f"Vendor file '{src.path}' shadows existing {self.content_type} '{name}'.\n"
+                        f"To extend an existing {self.content_type}, place the file in "
+                        f"'{vendor_path / self.content_type}/overlays/'.\n"
+                        f"To create a NEW {self.content_type}, use a unique name."
+                    )
+            existing.update(new_map.keys())
+
+            over_map = self._scan_vendor_overlays(vendor_path, vendor_name)
+            # Validate: overlays must reference existing entities.
+            for name, src in over_map.items():
+                if name not in existing:
+                    raise CompositionValidationError(
+                        f"Vendor overlay '{src.path}' references non-existent {self.content_type} '{name}'.\n"
+                        f"Available {self.content_type}: {sorted(existing)}\n"
+                        f"To create a NEW {self.content_type}, place the file in "
+                        f"'{vendor_path / self.content_type}/' (not overlays/)."
+                    )
+
+            results.append((vendor_name, new_map, over_map))
+
+        return results
+
+    # =========================================================================
+    # Pack Discovery
+    # =========================================================================
 
     def _scan_pack_new(self, pack_root: Path, pack: str, kind: str) -> Dict[str, LayerSource]:
         cache_key = (kind, pack)
         cached = self._pack_new_cache.get(cache_key)
         if cached is not None:
-            return dict(cached)
+            return cached
 
         entities: Dict[str, LayerSource] = {}
         type_dir = pack_root / pack / self.content_type
         if not type_dir.exists():
             self._pack_new_cache[cache_key] = entities
-            return dict(entities)
+            return entities
 
         for path in type_dir.rglob(self.file_pattern):
             if "overlays" in path.parts:
@@ -153,19 +348,19 @@ class LayerDiscovery:
             )
 
         self._pack_new_cache[cache_key] = entities
-        return dict(entities)
+        return entities
 
     def _scan_pack_overlays(self, pack_root: Path, pack: str, kind: str) -> Dict[str, LayerSource]:
         cache_key = (kind, pack)
         cached = self._pack_overlay_cache.get(cache_key)
         if cached is not None:
-            return dict(cached)
+            return cached
 
         entities: Dict[str, LayerSource] = {}
         overlays_dir = pack_root / pack / self.content_type / "overlays"
         if not overlays_dir.exists():
             self._pack_overlay_cache[cache_key] = entities
-            return dict(entities)
+            return entities
 
         for path in overlays_dir.rglob(self.file_pattern):
             if self._is_excluded(overlays_dir, path):
@@ -179,7 +374,7 @@ class LayerDiscovery:
             )
 
         self._pack_overlay_cache[cache_key] = entities
-        return dict(entities)
+        return entities
 
     def iter_pack_layers(
         self,
@@ -224,13 +419,13 @@ class LayerDiscovery:
     def _scan_layer_new(self, base: Path, *, label: str, cache_key: str) -> Dict[str, LayerSource]:
         cached = self._layer_new_cache.get(cache_key)
         if cached is not None:
-            return dict(cached)
+            return cached
 
         entities: Dict[str, LayerSource] = {}
         type_dir = base / self.content_type
         if not type_dir.exists():
             self._layer_new_cache[cache_key] = entities
-            return dict(entities)
+            return entities
 
         for path in type_dir.rglob(self.file_pattern):
             if "overlays" in path.parts:
@@ -246,18 +441,18 @@ class LayerDiscovery:
             )
 
         self._layer_new_cache[cache_key] = entities
-        return dict(entities)
+        return entities
 
     def _scan_layer_overlays(self, base: Path, *, label: str, cache_key: str) -> Dict[str, LayerSource]:
         cached = self._layer_overlay_cache.get(cache_key)
         if cached is not None:
-            return dict(cached)
+            return cached
 
         entities: Dict[str, LayerSource] = {}
         overlays_dir = base / self.content_type / "overlays"
         if not overlays_dir.exists():
             self._layer_overlay_cache[cache_key] = entities
-            return dict(entities)
+            return entities
 
         for path in overlays_dir.rglob(self.file_pattern):
             if self._is_excluded(overlays_dir, path):
@@ -271,7 +466,7 @@ class LayerDiscovery:
             )
 
         self._layer_overlay_cache[cache_key] = entities
-        return dict(entities)
+        return entities
 
     def discover_layer_new(self, layer_id: str, existing: Set[str]) -> Dict[str, LayerSource]:
         """Discover new entities for an overlay layer (must NOT shadow existing)."""

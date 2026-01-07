@@ -9,7 +9,7 @@ Evidence files prove commands passed. They must show `exitCode: 0`.
 
 **Commands:**
 ```bash
-edison evidence init <task-id>              # Initialize round (BEFORE implementing)
+edison qa round <task-id> --new             # Initialize round (BEFORE implementing)
 edison evidence capture <task-id>           # Capture required evidence for this task's preset (config-driven)
 edison evidence capture <task-id> --only <name>     # Capture a specific configured CI command
 # (Alias supported: --command <name>)
@@ -24,7 +24,7 @@ edison evidence status <task-id>            # Check what's missing
 ## Evidence Workflow (Agents)
 
 **Workflow:**
-1. `edison evidence init <task-id>` - Initialize BEFORE implementing
+1. `edison qa round <task-id> --new` - Initialize BEFORE implementing
 2. Implement with TDD (RED-GREEN-REFACTOR)
 3. Run command → Fix failures → Capture when passing:
    ```bash
@@ -55,7 +55,7 @@ Do not skip commands. Do not fabricate evidence. If you capture a failing run, f
 <!-- section: orchestrator-verify -->
 ## Evidence Orchestration
 
-**Before delegating:** Remind agent to run `edison evidence init` first.
+**Before delegating:** Remind agent to run `edison qa round --new` first.
 
 **After agent returns:**
 ```bash

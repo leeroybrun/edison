@@ -37,7 +37,7 @@ If the task is missing acceptance criteria or scope boundaries, stop and ask for
 
 2. **Initialize evidence round (MANDATORY)**:
    ```bash
-   edison evidence init <task-id>
+   edison qa round --new <task-id>
    ```
    - Creates the round directory structure for capturing evidence
    - Do this BEFORE starting implementation

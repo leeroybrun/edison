@@ -137,6 +137,8 @@ def test_session_heartbeat_logs_to_stderr(tmp_path: Path):
 
 
 def test_validators_validate_emits_summary_path_on_stdout_and_logs_to_stderr(tmp_path: Path):
+    from edison.core.config.manager import ConfigManager
+
     proj = TestProjectDir(tmp_path, REPO_ROOT)
     task_id = "contract-test-task"
     # Create an empty evidence dir (no reports → failure path)
@@ -148,7 +150,10 @@ def test_validators_validate_emits_summary_path_on_stdout_and_logs_to_stderr(tmp
     assert payload.get("task_id") == task_id
     summary_path = proj.tmp_path / str(payload.get("bundle_file"))
     assert summary_path.exists()
-    assert summary_path.name == "bundle-summary.md"
+    cfg = ConfigManager(repo_root=proj.tmp_path).load_config()
+    expected_name = cfg.get("validation", {}).get("artifactPaths", {}).get("bundleSummaryFile")
+    assert expected_name
+    assert summary_path.name == expected_name
     assert payload.get("approved") is False
 
 

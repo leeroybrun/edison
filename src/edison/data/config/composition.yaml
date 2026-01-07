@@ -357,3 +357,12 @@ composition:
           enabled: false
           source: "{{PROJECT_EDISON_DIR}}/_generated/agents"
           destination: ".codex/prompts"
+
+    # -------------------------------------------------------------------------
+    # OPENCODE (OpenCode / Anthropic CLI)
+    # -------------------------------------------------------------------------
+    opencode:
+      enabled: false
+      adapter_class: edison.core.adapters.platforms.opencode.OpenCodeAdapter
+      description: "OpenCode integration (plugin, agents, commands)"
+      output_path: ".opencode"

@@ -115,7 +115,7 @@ def test_missing_evidence_blockers_no_evidence_dir(isolated_project_env: Path):
     assert blocker["kind"] == "automation"
     assert blocker["recordId"] == task_id
     assert "Evidence dir missing" in blocker["message"]
-    assert blocker.get("fixCmd") == ["edison", "qa", "round", "prepare", task_id]
+    assert blocker.get("fixCmd") == ["edison", "qa", "round", "--new", task_id]
 
 
 def test_missing_evidence_blockers_no_rounds(isolated_project_env: Path):
@@ -135,7 +135,7 @@ def test_missing_evidence_blockers_no_rounds(isolated_project_env: Path):
     assert blocker["kind"] == "automation"
     assert blocker["recordId"] == task_id
     assert "No round-* directories present" in blocker["message"]
-    assert blocker.get("fixCmd") == ["edison", "qa", "round", "prepare", task_id]
+    assert blocker.get("fixCmd") == ["edison", "qa", "round", "--new", task_id]
 
 
 def test_missing_evidence_blockers_all_files_present(isolated_project_env: Path):

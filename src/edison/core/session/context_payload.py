@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from edison.core.utils.paths.project import get_project_config_dir
 
@@ -68,12 +68,18 @@ class SessionContextPayload:
 
     is_edison_project: bool
     project_root: Path
-    session_id: Optional[str]
-    session_state: Optional[str] = None
-    worktree_path: Optional[str] = None
-    current_task_id: Optional[str] = None
-    current_task_state: Optional[str] = None
+    session_id: str | None
+    session_state: str | None = None
+    worktree_path: str | None = None
+    current_task_id: str | None = None
+    current_task_state: str | None = None
     active_packs: tuple[str, ...] = ()
+    # Actor identity fields (from resolve_actor_identity)
+    actor_kind: str | None = None
+    actor_id: str | None = None
+    actor_constitution: str | None = None
+    actor_read_cmd: str | None = None
+    actor_resolution: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         fields = _get_payload_fields(self.project_root) if self.is_edison_project else []
@@ -109,6 +115,17 @@ class SessionContextPayload:
             except Exception:
                 pass
 
+        # Actor identity fields (always included for Edison projects)
+        if self.is_edison_project:
+            _put("actorKind", self.actor_kind or "unknown")
+            if self.actor_id:
+                _put("actorId", self.actor_id)
+            if self.actor_constitution:
+                _put("actorConstitution", self.actor_constitution)
+            if self.actor_read_cmd:
+                _put("actorReadCmd", self.actor_read_cmd)
+            _put("actorResolution", self.actor_resolution or "fallback")
+
         return base
 
 
@@ -130,7 +147,7 @@ def _is_edison_project(project_root: Path) -> bool:
 def build_session_context_payload(
     *,
     project_root: Path,
-    session_id: Optional[str] = None,
+    session_id: str | None = None,
 ) -> SessionContextPayload:
     """Build a deterministic context snapshot for the current project."""
     if not _is_edison_project(project_root):
@@ -140,8 +157,8 @@ def build_session_context_payload(
             session_id=None,
         )
 
-    session_state: Optional[str] = None
-    worktree_path: Optional[str] = None
+    session_state: str | None = None
+    worktree_path: str | None = None
     if session_id:
         try:
             from edison.core.session.persistence.repository import SessionRepository
@@ -151,7 +168,7 @@ def build_session_context_payload(
             if entity is not None:
                 session_state = str(entity.state or "") or None
                 worktree_path = (
-                    (entity.git.worktree_path if entity.git else None)  # type: ignore[truthy-bool]
+                    (entity.git.worktree_path if entity.git else None)
                     or None
                 )
         except Exception:
@@ -174,8 +191,8 @@ def build_session_context_payload(
     except Exception:
         active_packs = ()
 
-    current_task_id: Optional[str] = None
-    current_task_state: Optional[str] = None
+    current_task_id: str | None = None
+    current_task_state: str | None = None
     if session_id:
         try:
             from edison.core.config.domains.workflow import WorkflowConfig
@@ -192,6 +209,26 @@ def build_session_context_payload(
             current_task_id = None
             current_task_state = None
 
+    # Resolve actor identity (fail-open)
+    actor_kind: str | None = None
+    actor_id_resolved: str | None = None
+    actor_constitution: str | None = None
+    actor_read_cmd: str | None = None
+    actor_resolution: str | None = None
+    try:
+        from edison.core.actor.identity import resolve_actor_identity
+
+        actor = resolve_actor_identity(project_root=project_root, session_id=session_id)
+        actor_kind = actor.kind
+        actor_id_resolved = actor.actor_id
+        actor_constitution = str(actor.constitution_path) if actor.constitution_path else None
+        actor_read_cmd = actor.read_command
+        actor_resolution = actor.source
+    except Exception:
+        # Fail-open: actor identity resolution should never crash context building
+        actor_kind = "unknown"
+        actor_resolution = "fallback"
+
     return SessionContextPayload(
         is_edison_project=True,
         project_root=project_root,
@@ -201,6 +238,11 @@ def build_session_context_payload(
         current_task_id=current_task_id,
         current_task_state=current_task_state,
         active_packs=active_packs,
+        actor_kind=actor_kind,
+        actor_id=actor_id_resolved,
+        actor_constitution=actor_constitution,
+        actor_read_cmd=actor_read_cmd,
+        actor_resolution=actor_resolution,
     )
 
 
@@ -262,6 +304,15 @@ def format_session_context_markdown(payload: SessionContextPayload) -> str:
             if payload.active_packs:
                 packs = ", ".join(f"`{p}`" for p in payload.active_packs)
                 lines.append(f"- Active Packs: {packs}")
+        elif field == "actor":
+            # Actor identity stanza
+            if payload.actor_kind:
+                if payload.actor_id:
+                    lines.append(f"- Actor: `{payload.actor_kind}` (`{payload.actor_id}`)")
+                else:
+                    lines.append(f"- Actor: `{payload.actor_kind}`")
+                if payload.actor_read_cmd:
+                    lines.append(f"- Re-read constitution: `{payload.actor_read_cmd}`")
     lines.append("")
     return "\n".join(lines)
 
@@ -278,7 +329,7 @@ def format_session_context_for_next(ctx: dict[str, Any]) -> list[str]:
 
     lines: list[str] = []
     project_root_raw = ctx.get("projectRoot")
-    project_root: Optional[Path] = None
+    project_root: Path | None = None
     if isinstance(project_root_raw, str) and project_root_raw.strip():
         try:
             project_root = Path(project_root_raw)
@@ -346,6 +397,18 @@ def format_session_context_for_next(ctx: dict[str, Any]) -> list[str]:
             packs = ctx.get("activePacks") or []
             if isinstance(packs, list) and packs:
                 lines.append(f"  - Active Packs: {', '.join(str(p) for p in packs)}")
+        elif field == "actor":
+            # Actor identity stanza
+            actor_kind = ctx.get("actorKind")
+            if isinstance(actor_kind, str) and actor_kind.strip():
+                actor_id = ctx.get("actorId")
+                if isinstance(actor_id, str) and actor_id.strip():
+                    lines.append(f"  - Actor: {actor_kind} ({actor_id})")
+                else:
+                    lines.append(f"  - Actor: {actor_kind}")
+                read_cmd = ctx.get("actorReadCmd")
+                if isinstance(read_cmd, str) and read_cmd.strip():
+                    lines.append(f"  - Re-read constitution: {read_cmd}")
 
     lines.append("")
     return lines

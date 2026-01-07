@@ -48,7 +48,7 @@ class Rule:
     # CLI display configuration: {commands: ["task claim"], timing: "before"}
     cli: Optional[Dict[str, Any]] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.blocking and not self.enforced:
             raise ValueError(f"Rule {self.id}: blocking rules must be enforced")
 

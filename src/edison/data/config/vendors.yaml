@@ -1,0 +1,23 @@
+# Vendor Configuration
+# Settings for external vendor source management
+#
+# Example usage in project .edison/config/vendors.yaml:
+#   vendors:
+#     cacheDir: ~/.cache/edison/vendors
+#     sources:
+#       - name: opencode
+#         url: https://github.com/anthropics/opencode.git
+#         ref: main
+#         path: vendors/opencode
+#         sparse:
+#           - src/
+#           - docs/
+
+vendors:
+  # Directory for caching bare git mirrors (default: ~/.cache/edison/vendors)
+  cacheDir: ~/.cache/edison/vendors
+
+  # List of vendor sources
+  # Each source requires: name, url, ref, path
+  # Optional: sparse (list of paths for sparse checkout)
+  sources: []

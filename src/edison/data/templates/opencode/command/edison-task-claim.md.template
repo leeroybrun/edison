@@ -1,0 +1,11 @@
+---
+description: Claim an Edison task for implementation
+agent: build
+---
+Claim a task to start working on it. Pass the task ID as an argument.
+
+```bash
+edison task claim $ARGUMENTS
+```
+
+After claiming, read the task details and follow TDD workflow.

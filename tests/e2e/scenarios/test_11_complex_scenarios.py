@@ -672,6 +672,11 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
     child1_id = "650.1-wave1-child1"
     child2_id = "650.2-wave1-child2"
 
+    from edison.core.config.manager import ConfigManager
+    cfg = ConfigManager(repo_root=project_dir.tmp_path).load_config()
+    bundle_summary_name = cfg.get("validation", {}).get("artifactPaths", {}).get("bundleSummaryFile")
+    assert bundle_summary_name
+
     # Create session
     assert_command_success(
         run_script("session", ["new", "--owner", "test", "--session-id", session_id, "--mode", "start"], cwd=project_dir.tmp_path)
@@ -700,6 +705,9 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
         rd = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
         rd.mkdir(parents=True, exist_ok=True)
 
+        # Minimal command capture evidence required by the fast preset.
+        (rd / "command-test.txt").write_text("scripts/test-fast\nExit code: 0\n", encoding="utf-8")
+
         # Implementation report
         impl_report = {
             "taskId": task_id,
@@ -726,6 +734,7 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
         for validator_id, model in [
             ("global-codex", "codex"),
             ("global-claude", "claude"),
+            ("coderabbit", "coderabbit"),
             ("security", "codex"),
             ("performance", "codex"),
             ("prisma", "codex"),
@@ -767,14 +776,14 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
     # Should succeed (all validators approved)
     assert_command_success(validate_result)
 
-    # Verify bundle-summary.md exists under parent evidence directory
-    parent_bundle = project_dir.project_root / "qa" / "validation-evidence" / parent_id / "round-1" / "bundle-summary.md"
+    # Verify bundle summary exists under parent evidence directory
+    parent_bundle = project_dir.project_root / "qa" / "validation-evidence" / parent_id / "round-1" / bundle_summary_name
     assert_file_exists(parent_bundle)
 
     # Bundle validation runs once at the root, but Edison mirrors the bundle summary into
     # each cluster member's latest round so per-task guards can reason deterministically.
-    child1_bundle = project_dir.project_root / "qa" / "validation-evidence" / child1_id / "round-1" / "bundle-summary.md"
-    child2_bundle = project_dir.project_root / "qa" / "validation-evidence" / child2_id / "round-1" / "bundle-summary.md"
+    child1_bundle = project_dir.project_root / "qa" / "validation-evidence" / child1_id / "round-1" / bundle_summary_name
+    child2_bundle = project_dir.project_root / "qa" / "validation-evidence" / child2_id / "round-1" / bundle_summary_name
     assert_file_exists(child1_bundle)
     assert_file_exists(child2_bundle)
 

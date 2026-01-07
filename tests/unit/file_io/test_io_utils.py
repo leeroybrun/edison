@@ -108,12 +108,15 @@ def test_ensure_parent_dir_creates_parents(tmp_path: Path) -> None:
     assert nested.parent.is_dir()
 
 
-
+def test_write_text_accepts_encoding_kwarg(tmp_path: Path) -> None:
+    """write_text should allow callers to specify the text encoding."""
+    out = tmp_path / "out.txt"
+    io_utils.write_text(out, "hello", encoding="utf-8")
+    assert out.read_text(encoding="utf-8") == "hello"
 
 # ============================================================================
 # YAML I/O Tests
 # ============================================================================
-
 def test_read_yaml_with_valid_file(tmp_path: Path) -> None:
     """Test read_yaml with valid YAML file."""
     yaml_file = tmp_path / "config.yaml"

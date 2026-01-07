@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-class SafeDict(dict):
+class SafeDict(dict[str, str]):
     """
     Dictionary subclass that preserves unknown placeholders in format strings.
 

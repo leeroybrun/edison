@@ -531,6 +531,10 @@ properties:
                 type: string
               footerTemplate:
                 type: string
+              maxReasonsShown:
+                type: integer
+                minimum: 0
+                description: Maximum number of reasons to show per section (0 = no limit).
               sections:
                 type: object
                 additionalProperties:

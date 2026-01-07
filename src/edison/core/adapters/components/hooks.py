@@ -8,18 +8,18 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:  # Optional dependency; fall back to plain text rendering when absent
-    from jinja2 import Environment  # type: ignore
+    from jinja2 import Environment
 except Exception:  # pragma: no cover - handled at runtime
-    Environment = None  # type: ignore[assignment]
+    Environment = None  # type: ignore[misc, assignment]
 
-from edison.core.utils.io import ensure_directory
-from .base import AdapterComponent, AdapterContext
 from edison.core.config import ConfigManager
+from edison.core.utils.io import ensure_directory
 from edison.data import get_data_path
 
+from .base import AdapterComponent, AdapterContext
 
 # Allowed hook lifecycle event types (kept in sync with tests)
 ALLOWED_TYPES = [
@@ -43,10 +43,11 @@ class HookDefinition:
     hook_type: str = "command"
     enabled: bool = True
     blocking: bool = False
-    matcher: Optional[str] = None
+    matcher: str | None = None
     description: str = ""
     template: str = ""
-    config: Dict[str, Any] = field(default_factory=dict)
+    config: dict[str, Any] = field(default_factory=dict)
+    execution_scope: str = "session"  # "session" | "project" | "always"
 
 
 class HookComposer(AdapterComponent):
@@ -60,11 +61,11 @@ class HookComposer(AdapterComponent):
         self._bundled_config_dir = Path(get_data_path("config"))
 
     # ----- Public API -----
-    def compose(self) -> Dict[str, HookDefinition]:
+    def compose(self) -> dict[str, HookDefinition]:
         """Return merged hook definitions (core → packs → user → project)."""
         return self.load_definitions()
 
-    def sync(self, output_dir: Path) -> List[Path]:
+    def sync(self, output_dir: Path) -> list[Path]:
         """Render and write hooks to ``output_dir``.
 
         This is a thin wrapper around ``compose_hooks`` to satisfy the
@@ -73,7 +74,7 @@ class HookComposer(AdapterComponent):
         written = self.compose_hooks(output_dir_override=output_dir)
         return list(written.values())
 
-    def load_definitions(self) -> Dict[str, HookDefinition]:
+    def load_definitions(self) -> dict[str, HookDefinition]:
         """Load and merge hook definitions using ConfigManager's pack-aware loading.
 
         ConfigManager handles the full layering:
@@ -83,15 +84,21 @@ class HookComposer(AdapterComponent):
         4. Project config (.edison/config/hooks.yaml)
         5. Project-local config (.edison/config.local/hooks.yaml)
         """
-        from edison.core.config import ConfigManager
 
         cfg_mgr = ConfigManager(repo_root=self.project_root)
         full_config = cfg_mgr.load_config(validate=False, include_packs=True)
 
         hooks_section = full_config.get("hooks", {}) or {}
+        settings = hooks_section.get("settings", {}) or {}
         definitions = hooks_section.get("definitions", {}) or {}
 
-        return self._dicts_to_defs(definitions)
+        default_execution_scope = str(
+            settings.get("executionScope") or settings.get("execution_scope") or "session"
+        )
+        if default_execution_scope not in {"session", "project", "always"}:
+            default_execution_scope = "session"
+
+        return self._dicts_to_defs(definitions, default_execution_scope=default_execution_scope)
 
     def render_hook(self, hook_def: HookDefinition) -> str:
         """Render a single hook using its template (Jinja2 when available)."""
@@ -99,7 +106,7 @@ class HookComposer(AdapterComponent):
         template_path = self._resolve_template(hook_def.template)
         return self._render_template(template_path, hook_def, hooks_cfg)
 
-    def compose_hooks(self, *, output_dir_override: Optional[Path] = None) -> Dict[str, Path]:
+    def compose_hooks(self, *, output_dir_override: Path | None = None) -> dict[str, Path]:
         """Render and write enabled hooks for Claude Code.
 
         Args:
@@ -120,8 +127,11 @@ class HookComposer(AdapterComponent):
 
         output_dir = ensure_directory(self._output_dir(hooks_cfg))
 
+        # Generate shared guard script first
+        self._generate_guard_script(output_dir)
+
         definitions = self.load_definitions()
-        results: Dict[str, Path] = {}
+        results: dict[str, Path] = {}
         for hook_id, hook_def in definitions.items():
             if not hook_def.enabled:
                 continue
@@ -138,9 +148,35 @@ class HookComposer(AdapterComponent):
 
         return results
 
+    def _generate_guard_script(self, output_dir: Path) -> Path:
+        """Generate the shared guard script (_edison_guard.sh).
+
+        The guard script provides a unified `edison_hook_guard` function that:
+        - Checks for Edison session using `edison session detect`
+        - Exits early (0) if executionScope=session and no session detected
+        - Continues if executionScope=project or executionScope=always
+        """
+        guard_template = self.templates_dir / "_edison_guard.sh.template"
+        if not guard_template.exists():
+            raise FileNotFoundError(f"Guard template not found at {guard_template}")
+
+        raw = guard_template.read_text(encoding="utf-8")
+
+        # Render template (simple variable expansion, no hook-specific context)
+        if Environment is not None:
+            env = Environment(trim_blocks=True, lstrip_blocks=True)
+            rendered = env.from_string(raw).render()
+        else:
+            rendered = raw
+
+        guard_path = output_dir / "_edison_guard.sh"
+        guard_path.write_text(rendered, encoding="utf-8")
+        guard_path.chmod(guard_path.stat().st_mode | 0o111)
+        return guard_path
+
     def generate_settings_json_hooks_section(
-        self, *, output_dir_override: Optional[Path] = None
-    ) -> Dict[str, List[Dict[str, Any]]]:
+        self, *, output_dir_override: Path | None = None
+    ) -> dict[str, list[dict[str, Any]]]:
         """Summarize hooks for inclusion in settings.json.
 
         Returns the hooks grouped by lifecycle event type (e.g., PreToolUse, PostToolUse).
@@ -159,12 +195,12 @@ class HookComposer(AdapterComponent):
         scripts = self.compose_hooks(output_dir_override=output_dir_override)
         definitions = self.load_definitions()
 
-        grouped: Dict[str, List[Dict[str, Any]]] = {}
+        grouped: dict[str, list[dict[str, Any]]] = {}
         for hook_id, hook_def in definitions.items():
             if not hook_def.enabled or hook_id not in scripts:
                 continue
 
-            entry: Dict[str, Any] = {"hooks": []}
+            entry: dict[str, Any] = {"hooks": []}
 
             # Only add matcher for tool-based events
             if hook_def.type not in NON_TOOL_EVENTS:
@@ -179,13 +215,18 @@ class HookComposer(AdapterComponent):
         return grouped
 
     # ----- Helpers -----
-    def _hooks_cfg(self) -> Dict[str, Any]:
+    def _hooks_cfg(self) -> dict[str, Any]:
         return (self.config or {}).get("hooks", {}) or {}
 
 
-    def _dicts_to_defs(self, merged: Dict[str, Dict[str, Any]]) -> Dict[str, HookDefinition]:
+    def _dicts_to_defs(
+        self,
+        merged: dict[str, dict[str, Any]],
+        *,
+        default_execution_scope: str,
+    ) -> dict[str, HookDefinition]:
         """Convert merged dicts into HookDefinition objects with validation."""
-        results: Dict[str, HookDefinition] = {}
+        results: dict[str, HookDefinition] = {}
         for hook_id, raw in merged.items():
             hook_type = str(raw.get("type") or "Hook")
             if hook_type not in ALLOWED_TYPES:
@@ -205,6 +246,7 @@ class HookComposer(AdapterComponent):
                 description=str(raw.get("description", "")),
                 template=str(raw.get("template", "") or ""),
                 config=cfg,
+                execution_scope=str(raw.get("executionScope", default_execution_scope)),
             )
             results[hook_id] = defn
         return results
@@ -223,14 +265,14 @@ class HookComposer(AdapterComponent):
             return item[1:]
         return item
 
-    def _output_dir(self, hooks_cfg: Dict[str, Any]) -> Path:
+    def _output_dir(self, hooks_cfg: dict[str, Any]) -> Path:
         # Explicit override (e.g., from sync(output_dir))
         override = hooks_cfg.get("output_dir_override") or hooks_cfg.get("output_dir")
         if override:
             return Path(str(Path(str(override)).expanduser()))
         return self.project_root / ".claude" / "hooks"
 
-    def _resolve_template(self, name: str) -> Optional[Path]:
+    def _resolve_template(self, name: str) -> Path | None:
         if not name:
             return None
 
@@ -258,9 +300,9 @@ class HookComposer(AdapterComponent):
 
     def _render_template(
         self,
-        template_path: Optional[Path],
+        template_path: Path | None,
         hook_def: HookDefinition,
-        hooks_cfg: Dict[str, Any],
+        hooks_cfg: dict[str, Any],
     ) -> str:
         context = {
             "id": hook_def.id,
@@ -273,6 +315,7 @@ class HookComposer(AdapterComponent):
             "blocking": hook_def.blocking,
             "matcher": hook_def.matcher,
             "settings": hooks_cfg.get("settings", {}),
+            "execution_scope": hook_def.execution_scope,
         }
 
         if template_path and template_path.exists():
@@ -298,7 +341,7 @@ class HookComposer(AdapterComponent):
         """Check if template text contains Jinja2 block tags that require full Jinja2."""
         return bool(re.search(r"{%\s*\w+", text))
 
-    def _render_basic_template(self, text: str, context: Dict[str, Any]) -> str:
+    def _render_basic_template(self, text: str, context: dict[str, Any]) -> str:
         """Very small placeholder renderer for when Jinja2 is unavailable."""
 
         def _lookup(expr: str) -> str:
@@ -328,9 +371,9 @@ class HookComposer(AdapterComponent):
 
 
 def compose_hooks(
-    config: Optional[Dict[str, Any]] = None,
-    repo_root: Optional[Path] = None,
-) -> Dict[str, Path]:
+    config: dict[str, Any] | None = None,
+    repo_root: Path | None = None,
+) -> dict[str, Path]:
     """Module-level convenience wrapper to compose hooks.
 
     Prefer constructing HookComposer from a PlatformAdapter.context in new code.
@@ -342,7 +385,7 @@ def compose_hooks(
         def platform_name(self) -> str:
             return "compose-hooks"
 
-        def sync_all(self) -> Dict[str, Any]:
+        def sync_all(self) -> dict[str, Any]:
             return {}
 
     root = (repo_root or Path.cwd()).resolve()

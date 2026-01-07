@@ -63,6 +63,33 @@ def format_human_readable(payload: dict[str, Any]) -> str:
             # Fail-open: session-next should not crash due to context formatting drift.
             pass
 
+    # Completion/continuation summary (small + configurable; do not spam the prompt body).
+    if _section_enabled(output_cfg, "completion", default=True) and payload.get("completion"):
+        comp = payload.get("completion") or {}
+        cont = payload.get("continuation") or {}
+        is_complete = bool(comp.get("isComplete"))
+        policy = str(comp.get("policy") or "unknown")
+
+        status_label = "✅ COMPLETE" if is_complete else "⏳ INCOMPLETE"
+        lines.append(f"{status_label} (policy: {policy})")
+
+        if not is_complete:
+            reasons = comp.get("reasonsIncomplete") or []
+            if isinstance(reasons, list) and reasons:
+                # Limit from config (session.yaml next.output.maxReasonsShown)
+                max_reasons = int(output_cfg.get("maxReasonsShown", 0)) or len(reasons)
+                shown = 0
+                for r in reasons:
+                    if shown >= max_reasons:
+                        break
+                    if isinstance(r, dict) and r.get("message"):
+                        lines.append(f"  - {r['message']}")
+                        shown += 1
+        mode = str(cont.get("mode") or "off")
+        should = bool(cont.get("shouldContinue"))
+        lines.append(f"Continuation: mode={mode} shouldContinue={should}")
+        lines.append("")
+
     # Show applicable rules FIRST (proactive, not just at enforcement)
     if _section_enabled(output_cfg, "rules", default=True) and payload.get("rulesEngine"):
         lines.append("📋 APPLICABLE RULES (read FIRST):")

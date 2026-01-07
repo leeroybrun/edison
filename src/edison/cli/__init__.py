@@ -19,8 +19,8 @@ from ._output import OutputFormatter
 from ._utils import (
     detect_record_type,
     format_display_path,
-    get_repo_root,
     get_repository,
+    get_repo_root,
     resolve_existing_task_id,
     resolve_session_id,
 )

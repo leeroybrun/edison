@@ -7,6 +7,8 @@ project:
   pythonVersion: "3.12"
   sourceDir: "src/edison"
   testsDir: "tests"
+  paths:
+    uiRepoName: "edison-ui"
   palRoles:
     api-builder: "api-builder"
     component-builder: "component-builder"

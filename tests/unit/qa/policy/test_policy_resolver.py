@@ -107,6 +107,38 @@ class TestPolicyResolver:
         with pytest.raises(ValueError, match="Unknown preset"):
             resolver.resolve_for_task("T001", preset_name="nonexistent")
 
+    def test_resolve_prefers_strict_for_meta_tasks(self, tmp_path: Path, monkeypatch):
+        """Meta tasks (with children) should default to strict preset when inference is ambiguous."""
+        repo = create_repo_with_git(tmp_path)
+        create_project_structure(repo)
+        setup_project_root(monkeypatch, repo)
+        reset_edison_caches()
+
+        # Child task (leaf)
+        create_task_file(repo, "T001", state="done", title="Child Task")
+
+        # Meta task with explicit child_ids and no implementation report/files context
+        from edison.core.entity import EntityMetadata
+        from edison.core.task.models import Task
+        from edison.core.task.repository import TaskRepository
+
+        TaskRepository(project_root=repo).save(
+            Task(
+                id="M001",
+                state="done",
+                title="Meta Task",
+                relationships=[{"type": "child", "target": "T001"}],
+                metadata=EntityMetadata.create(created_by="test"),
+            )
+        )
+
+        from edison.core.qa.policy.resolver import ValidationPolicyResolver
+
+        resolver = ValidationPolicyResolver(project_root=repo)
+        policy = resolver.resolve_for_task("M001")
+
+        assert policy.preset.name == "strict"
+
 
 @pytest.mark.qa
 class TestPolicyValidatorFiltering:

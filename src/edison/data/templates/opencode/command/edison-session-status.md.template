@@ -1,0 +1,9 @@
+---
+description: Show Edison session status
+agent: build
+---
+Run `edison session status` to see the current session state, tasks, and QA status.
+
+```bash
+edison session status
+```

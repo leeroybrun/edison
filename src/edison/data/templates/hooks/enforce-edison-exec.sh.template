@@ -4,6 +4,14 @@
 # Description: {{ description }}
 # Blocking: {{ "YES - CAN BLOCK" if blocking else "NO" }}
 
+# Source shared guard and check execution scope
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "$SCRIPT_DIR/_edison_guard.sh" ]]; then
+    # shellcheck source=_edison_guard.sh
+    source "$SCRIPT_DIR/_edison_guard.sh"
+    edison_hook_guard "{{ id }}" "{{ execution_scope }}"
+fi
+
 {% set cfg = config if config is defined else {} %}
 {% set allow_env = cfg.get("allow_env", "EDISON_ALLOW_DIRECT_BASH") %}
 {% set allow_builtins = cfg.get("allow_builtins", ["cd", "export", "unset", "source", "eval"]) %}

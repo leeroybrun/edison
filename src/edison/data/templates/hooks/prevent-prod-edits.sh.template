@@ -4,12 +4,16 @@
 # Description: {{ description }}
 # Blocking: {{ "YES" if blocking else "NO" }} (can block edits to protected files)
 
-# Fast check: Skip if no Edison session file exists
+# Source shared guard and check execution scope
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "$SCRIPT_DIR/_edison_guard.sh" ]]; then
+    # shellcheck source=_edison_guard.sh
+    source "$SCRIPT_DIR/_edison_guard.sh"
+    edison_hook_guard "{{ id }}" "{{ execution_scope }}"
+fi
+
 {% set mgmt_dir = global_config.get("project_management_dir") %}
 SESSION_FILE="{{ mgmt_dir }}/.session-id"
-if [[ ! -f "$SESSION_FILE" ]]; then
-  exit 0  # No Edison session, skip hook
-fi
 
 # Parse input JSON (with timeout to prevent hanging)
 INPUT=$(timeout 1 cat 2>/dev/null || echo '{}')

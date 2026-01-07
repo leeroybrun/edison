@@ -4,11 +4,12 @@
 # Description: {{ description }}
 # Blocking: {{ "YES" if blocking else "NO" }}
 
-# Fast check: Skip if no Edison session file exists
-{% set mgmt_dir = global_config.get("project_management_dir") %}
-SESSION_FILE="{{ mgmt_dir }}/.session-id"
-if [[ ! -f "$SESSION_FILE" ]]; then
-  exit 0  # No Edison session, skip hook
+# Source shared guard and check execution scope
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "$SCRIPT_DIR/_edison_guard.sh" ]]; then
+    # shellcheck source=_edison_guard.sh
+    source "$SCRIPT_DIR/_edison_guard.sh"
+    edison_hook_guard "{{ id }}" "{{ execution_scope }}"
 fi
 
 # Parse input JSON (with timeout to prevent hanging)
@@ -25,8 +26,11 @@ if [[ "$TOOL_NAME" != "Write" && "$TOOL_NAME" != "Edit" ]]; then
   exit 0
 fi
 
-# Get current task state (don't fail if no session)
-TASK_STATE=$(edison task status --current --json 2>/dev/null | jq -r '.state // empty' 2>/dev/null)
+# Get current task state (prefer session context JSON; fall back to legacy task JSON)
+TASK_STATE=$(edison session context --json 2>/dev/null | jq -r '.currentTaskState // empty' 2>/dev/null || true)
+if [[ -z "$TASK_STATE" ]]; then
+  TASK_STATE=$(edison task --json 2>/dev/null | jq -r '.state // empty' 2>/dev/null || true)
+fi
 
 # Only remind in configured states
 {% if only_for_states %}

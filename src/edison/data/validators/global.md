@@ -99,7 +99,7 @@ git diff main...HEAD          # Committed changes on this branch/worktree
 - ✅ Loading/error/empty states in UI
 
 ### 6. TDD Compliance
-- ✅ Tests written BEFORE code (check git history)
+- ✅ TDD intent is verifiable (prefer `[RED]`→`[GREEN]`→`[REFACTOR]` commit markers when available; use git history as a signal, but do not reject solely on marker sequencing if new behavior is covered by real tests and the required evidence commands pass)
 - ✅ Tests use real behavior (minimal mocking)
 - ✅ Coverage meets target
 

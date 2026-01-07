@@ -1,0 +1,12 @@
+{
+  "$schema": "./.opencode/schema/opencode-config.schema.json",
+  "plugins": {
+    "directory": ".opencode/plugin"
+  },
+  "agents": {
+    "directory": ".opencode/agent"
+  },
+  "commands": {
+    "directory": ".opencode/command"
+  }
+}

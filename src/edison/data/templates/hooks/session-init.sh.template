@@ -6,6 +6,14 @@
 # Consume hook payload from stdin (Claude Code sends JSON); ignore it.
 cat >/dev/null 2>&1 || true
 
+# Source shared guard and check execution scope
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "$SCRIPT_DIR/_edison_guard.sh" ]]; then
+    # shellcheck source=_edison_guard.sh
+    source "$SCRIPT_DIR/_edison_guard.sh"
+    edison_hook_guard "{{ id }}" "{{ execution_scope }}"
+fi
+
 command -v edison >/dev/null 2>&1 || exit 0
 
 # Fail-open: hooks must never break the host toolchain.
