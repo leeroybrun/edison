@@ -5,8 +5,6 @@ from __future__ import annotations
 import shutil
 import subprocess
 import uuid
-import os
-import sys
 from time import perf_counter
 from pathlib import Path
 from typing import Any, Dict, Optional, cast
@@ -24,6 +22,7 @@ from .shared_config import shared_state_cfg
 from .shared_paths import ensure_shared_paths_in_checkout
 from .deps import maybe_install_deps_and_post_install
 from .health import validate_worktree_checkout
+from .progress import WorktreeProgress
 
 __all__ = [
     "create_worktree",
@@ -53,13 +52,7 @@ def create_worktree(
     if not config.get("enabled", False):
         return (None, None)
 
-    progress_enabled = os.environ.get("EDISON_SESSION_CREATE_PROGRESS") == "1"
-    t0_total = perf_counter()
-
-    def _progress(msg: str) -> None:
-        if not progress_enabled:
-            return
-        print(f"[edison] {msg}", file=sys.stderr)
+    progress = WorktreeProgress()
 
     def _maybe_align_primary_shared_state() -> None:
         try:
@@ -90,7 +83,7 @@ def create_worktree(
     if existing_wt is not None:
         resolved = existing_wt.resolve()
         if not dry_run:
-            _progress(f"Worktree exists for {branch_name}; reusing {resolved}")
+            progress.emit(f"Worktree exists for {branch_name}; reusing {resolved}")
             ensure_shared_paths_in_checkout(
                 checkout_path=resolved, repo_dir=repo_dir, cfg=config, scope="session"
             )
@@ -158,19 +151,16 @@ def create_worktree(
 
     start_ref = _resolve_start_ref(repo_dir, base_branch_value, timeout=t_branch)
 
-    def _normalize_fetch_mode(raw: object) -> str:
-        # Back-compat: treat booleans as explicit choices.
-        if isinstance(raw, bool):
-            return "always" if raw else "never"
-        mode = str(raw or "on_failure").strip().lower()
-        if mode in {"always", "never", "on_failure"}:
-            return mode
-        return "on_failure"
-
-    fetch_mode = _normalize_fetch_mode(config.get("fetchMode"))
+    raw_fetch_mode = config.get("fetchMode")
+    if isinstance(raw_fetch_mode, bool):
+        fetch_mode = "always" if raw_fetch_mode else "never"
+    else:
+        fetch_mode = str(raw_fetch_mode or "on_failure").strip().lower()
+        if fetch_mode not in {"always", "never", "on_failure"}:
+            fetch_mode = "on_failure"
 
     def _fetch() -> None:
-        _progress("Fetching remotes (git fetch --all --prune)...")
+        progress.emit("Fetching remotes (git fetch --all --prune)...")
         run_with_timeout(
             ["git", "fetch", "--all", "--prune"],
             cwd=repo_dir,
@@ -190,7 +180,7 @@ def create_worktree(
 
             branch_ref = f"refs/heads/{branch_name}"
             if _ref_exists(branch_ref):
-                _progress(f"Adding worktree checkout at {worktree_path} for existing branch {branch_name}...")
+                progress.emit(f"Adding worktree checkout at {worktree_path} for existing branch {branch_name}...")
                 t0_add = perf_counter()
                 run_with_timeout(
                     ["git", "worktree", "add", "--", str(worktree_path), branch_name],
@@ -200,9 +190,9 @@ def create_worktree(
                     text=True,
                     timeout=t_add,
                 )
-                _progress(f"Worktree add completed in {perf_counter() - t0_add:0.2f}s")
+                progress.emit(f"Worktree add completed in {perf_counter() - t0_add:0.2f}s")
             else:
-                _progress(f"Adding worktree checkout at {worktree_path} ({branch_name} from {start_ref})...")
+                progress.emit(f"Adding worktree checkout at {worktree_path} ({branch_name} from {start_ref})...")
                 t0_add = perf_counter()
                 run_with_timeout(
                     ["git", "worktree", "add", "-b", branch_name, "--", str(worktree_path), start_ref],
@@ -212,11 +202,11 @@ def create_worktree(
                     text=True,
                     timeout=t_add,
                 )
-                _progress(f"Worktree add completed in {perf_counter() - t0_add:0.2f}s")
+                progress.emit(f"Worktree add completed in {perf_counter() - t0_add:0.2f}s")
             break
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
             last_err = e
-            _progress(f"Worktree add failed; pruning and retrying (attempt {_attempt + 1}/2)...")
+            progress.emit(f"Worktree add failed; pruning and retrying (attempt {_attempt + 1}/2)...")
             run_with_timeout(
                 ["git", "worktree", "prune"],
                 cwd=repo_dir,
@@ -230,22 +220,19 @@ def create_worktree(
     if last_err is not None:
         raise RuntimeError(f"Failed to create worktree after retries: {last_err}")
 
-    t0_install = perf_counter()
     maybe_install_deps_and_post_install(
         worktree_path=worktree_path,
         config=config,
         install_deps_override=install_deps,
         timeout=t_install,
     )
-    if perf_counter() - t0_install > 0.5:
-        _progress(f"Post-checkout steps completed in {perf_counter() - t0_install:0.2f}s")
 
     try:
         validate_worktree_checkout(worktree_path=worktree_path, branch_name=branch_name, timeout=t_health)
     except Exception as e:
         raise RuntimeError(f"Worktree health checks failed: {e}")
 
-    _progress("Linking shared paths + git excludes...")
+    progress.emit("Linking shared paths + git excludes...")
     ensure_shared_paths_in_checkout(checkout_path=worktree_path, repo_dir=repo_dir, cfg=config, scope="session")
     _ensure_worktree_session_id_file(worktree_path=worktree_path, session_id=session_id)
     ensure_checkout_git_excludes(checkout_path=worktree_path, cfg=config, scope="session")
@@ -257,7 +244,7 @@ def create_worktree(
             f"Primary worktree HEAD changed during worktree creation: {primary_before} -> {primary_after}"
         )
 
-    _progress(f"Worktree ready in {perf_counter() - t0_total:0.2f}s: {worktree_path}")
+    progress.emit(f"Worktree ready in {progress.elapsed():0.2f}s: {worktree_path}")
     return (worktree_path, branch_name)
 
 
