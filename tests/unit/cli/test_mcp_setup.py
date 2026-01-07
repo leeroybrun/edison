@@ -77,3 +77,16 @@ def test_mcp_setup_dry_run_outputs_without_writing(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     assert ".mcp.json" not in {p.name for p in project_root.iterdir()}
     assert "mcpServers" in result.stdout
+
+
+def test_mcp_setup_check_does_not_write_config(tmp_path: Path) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+
+    env = os.environ.copy()
+    env["AGENTS_PROJECT_ROOT"] = str(project_root)
+
+    result = run_mcp_setup(["--check", str(project_root)], env, cwd=project_root)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert ".mcp.json" not in {p.name for p in project_root.iterdir()}

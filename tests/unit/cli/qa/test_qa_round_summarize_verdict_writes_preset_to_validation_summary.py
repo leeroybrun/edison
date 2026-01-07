@@ -7,7 +7,7 @@ import pytest
 
 
 @pytest.mark.qa
-def test_qa_validate_check_only_writes_preset_to_bundle_summary(
+def test_qa_round_summarize_verdict_writes_preset_to_validation_summary(
     isolated_project_env: Path,
     monkeypatch,
 ) -> None:
@@ -16,7 +16,7 @@ def test_qa_validate_check_only_writes_preset_to_bundle_summary(
     from edison.core.qa.evidence import EvidenceService
     from edison.core.task.workflow import TaskQAWorkflow
 
-    task_id = "920-wave1-check-only-preset"
+    task_id = "920-wave1-round-summarize-preset"
     TaskQAWorkflow(isolated_project_env).create_task(task_id=task_id, title="Test", create_qa=False)
 
     ev = EvidenceService(task_id, project_root=isolated_project_env)

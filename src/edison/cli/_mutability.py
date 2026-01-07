@@ -34,11 +34,13 @@ def is_mutating_invocation(command_name: str, args: argparse.Namespace) -> bool:
     if command_name == "task split":
         return True
 
-    # qa validate: roster-only/dry-run are read-only. Execution/check-only writes evidence.
+    # qa validate: roster-only/dry-run are read-only. Execution writes round reports.
     if command_name == "qa validate":
-        if bool(getattr(args, "check_only", False)):
-            return True
         return bool(getattr(args, "execute", False))
+
+    # qa round: prepare/summarize/set-status all write round artifacts or QA history.
+    if command_name == "qa round":
+        return True
 
     # qa run: writes evidence.
     if command_name == "qa run":
@@ -56,6 +58,11 @@ def is_mutating_invocation(command_name: str, args: argparse.Namespace) -> bool:
     if command_name == "session track":
         sub = str(getattr(args, "subcommand", "") or "")
         return sub in {"start", "heartbeat", "complete"}
+
+    # session continuation: show is read-only; set/clear mutate session metadata.
+    if command_name == "session continuation":
+        sub = str(getattr(args, "subcommand", "") or "")
+        return sub in {"set", "clear"}
 
     # session next / verify are read-only by design.
     if command_name in {"session next", "session verify"}:

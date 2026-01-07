@@ -436,7 +436,7 @@ class QAValidatePreflightChecklistEngine:
                 status="missing",
                 evidence_paths=[self._display_path(target_dir)],
                 suggested_commands=[
-                    f"edison evidence init {task_id}",
+                    f"edison qa round prepare {task_id}",
                     "edison evidence context7 template <package>",
                 ],
             )

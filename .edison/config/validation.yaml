@@ -8,42 +8,87 @@ validation:
   # Fast preset used by default for per-task iteration in the Edison repo.
   defaultPreset: fast
 
+  # Engine overrides for this repo (avoid hardcoding repo-specific details in core engines).
+  engines:
+    # CodeRabbit reviews should target this branch's committed changes relative to main
+    # to avoid reporting pre-existing issues across the entire repository.
+    coderabbit-cli:
+      read_only_flags:
+        - "--plain"
+        - "--type"
+        - "committed"
+        - "--base"
+        - "main"
+        - "--cwd"
+        - "{worktree_path}"
+
   # Deep preset used for session-close verification in the Edison repo.
   presets:
     fast:
       name: fast
       description: "Fast per-task validation for iteration (Edison repo)"
       validators:
+        - global-codex
         - global-claude
-        - global-coderabbit
+        - coderabbit
       # required_evidence is intentionally omitted so baseline evidence applies.
       blocking_validators:
+        - global-codex
         - global-claude
+        - coderabbit
+
+    coderabbit_only:
+      name: coderabbit_only
+      description: "CodeRabbit-only validation (Edison repo)"
+      validators:
+        - coderabbit
+      # required_evidence is intentionally omitted so baseline evidence applies.
+      blocking_validators:
+        - coderabbit
+
+    bundle:
+      name: bundle
+      description: "Bundle/meta validation (Codex + Claude + CodeRabbit) (Edison repo)"
+      validators:
+        - global-codex
+        - global-claude
+        - coderabbit
+      required_evidence:
+        - command-type-check.txt
+        - command-lint.txt
+        - command-test.txt
+        - command-build.txt
+      blocking_validators:
+        - global-codex
+        - global-claude
+        - coderabbit
 
     deep:
       name: deep
       description: "Deep validation required before session close (Edison repo)"
       validators:
+        - global-codex
         - global-claude
         - security
         - performance
-        - global-coderabbit
+        - coderabbit
       required_evidence:
         - command-type-check.txt
         - command-test-full.txt
         - command-build.txt
       blocking_validators:
+        - global-codex
         - global-claude
         - security
         - performance
+        - coderabbit
 
   validators:
-    # Edison repo default: avoid running Codex CLI validators as hard blockers.
-    # In practice, Codex CLI can take >10 minutes per run in large worktrees.
-    # Projects that want Codex CLI validation should override this in their own
-    # `.edison/config/validation.yaml`.
     global-codex:
-      enabled: false
+      enabled: true
+      # Run Codex only when explicitly requested (e.g. the `bundle` preset).
+      always_run: false
+      timeout: 900
 
     # Run critical validators with Claude CLI by default for reliability.
     security:
@@ -57,6 +102,8 @@ validation:
     # The global validator prompt is intentionally large (constitution + checklist + stack overlays).
     # 300s is frequently too low for remote model execution; avoid false negatives due to timeouts.
     global-claude:
+      # Only run Claude when included by the selected preset (avoid forcing it in coderabbit-only runs).
+      always_run: false
       timeout: 900
 
     global-coderabbit:
@@ -66,8 +113,24 @@ validation:
       prompt: "_generated/validators/critical/coderabbit.md"
       wave: global
       always_run: false
+      enabled: false
       blocking: false
-      timeout: 600
+      timeout: 150
+      context7_required: false
+      context7_packages: []
+      triggers: []
+      focus: []
+
+    coderabbit:
+      name: "CodeRabbit AI Review"
+      engine: coderabbit-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/critical/coderabbit.md"
+      wave: global
+      always_run: false
+      blocking: true
+      # CodeRabbit can be slow; allow enough time for full reviews.
+      timeout: 2700
       context7_required: false
       context7_packages: []
       triggers: []

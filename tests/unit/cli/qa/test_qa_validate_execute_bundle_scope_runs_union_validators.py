@@ -73,13 +73,11 @@ def test_qa_validate_execute_bundle_scope_runs_union_of_cluster_validators(
             scope="bundle",
             session=None,
             round=1,
-            new_round=False,
             wave="bundle_test",
             validators=None,
             add_validators=None,
             blocking_only=False,
             execute=True,
-            check_only=False,
             sequential=True,
             dry_run=False,
             max_workers=1,
@@ -92,4 +90,3 @@ def test_qa_validate_execute_bundle_scope_runs_union_of_cluster_validators(
     round_dir = root_ev.get_round_dir(1)
     assert (round_dir / "delegation-alpha.md").exists()
     assert (round_dir / "delegation-beta.md").exists()
-

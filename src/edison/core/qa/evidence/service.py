@@ -208,7 +208,6 @@ class EvidenceService:
         """
         round_dir = self.ensure_round(round_num)
         bundle_path = self._resolve_bundle_read_path(round_dir)
-
         return read_structured_report(bundle_path)
 
     def write_bundle(self, data: Dict[str, Any], round_num: Optional[int] = None) -> None:

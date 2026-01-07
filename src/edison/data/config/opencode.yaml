@@ -1,0 +1,34 @@
+# OpenCode integration configuration
+# Defines templates and paths for edison opencode setup command
+
+opencode:
+  # Paths for generated artifacts (relative to project root)
+  paths:
+    plugin: ".opencode/plugin"
+    agents: ".opencode/agent"
+    commands: ".opencode/command"
+    config: "opencode.json"
+    packageJson: ".opencode/package.json"
+
+  # Agent templates to generate
+  # Each entry corresponds to a template file in src/edison/data/templates/opencode/agent/{name}.md.template
+  agentTemplates:
+    - edison-orchestrator
+    - edison-agent
+    - edison-validator
+
+  # Command templates to generate
+  # Each entry corresponds to a template file in src/edison/data/templates/opencode/command/{name}.md.template
+  commandTemplates:
+    - edison-session-next
+    - edison-session-status
+    - edison-task-claim
+    - edison-task-ready
+
+  # Plugin template (TypeScript)
+  pluginTemplate: "templates/opencode/plugin/edison.ts.template"
+
+  # Config templates
+  configTemplates:
+    opencode: "templates/opencode/opencode.json.template"
+    package: "templates/opencode/package.json.template"

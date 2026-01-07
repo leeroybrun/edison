@@ -488,9 +488,10 @@ def _compute_bundle_summary(
 
     root_ev = EvidenceService(str(root_task_id), project_root=repo_root)
 
-    # Fail-closed: if a blocking validator report exists in the round evidence dir,
+    # Fail-closed: if a blocking validator report exists in the round directory,
     # it must be included in approval even if it was not part of the preset roster.
-    # This prevents ignoring a known blocking signal (e.g. security reject) during check-only.
+    # This prevents ignoring a known blocking signal (e.g. security reject) when computing
+    # approval from existing reports.
     try:
         for report_path in root_ev.list_validator_reports(round_num=int(round_num)):
             name = report_path.name

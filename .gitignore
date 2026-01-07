@@ -15,5 +15,6 @@ __pycache__/
 
 .edison/config.local/
 .DS_Store
+.validator-artifacts/
 /artifacts
 /.pytest-logs

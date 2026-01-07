@@ -8,7 +8,7 @@ import pytest
 
 
 @pytest.mark.qa
-def test_qa_validate_check_only_bundle_scope_writes_root_summary_and_mirrors(
+def test_qa_round_summarize_verdict_bundle_scope_writes_root_summary_and_mirrors(
     isolated_project_env: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch,
@@ -96,7 +96,7 @@ def test_qa_validate_check_only_bundle_scope_writes_root_summary_and_mirrors(
 
 
 @pytest.mark.qa
-def test_qa_validate_check_only_bundle_scope_mirrors_into_member_latest_round(
+def test_qa_round_summarize_verdict_bundle_scope_mirrors_into_member_latest_round(
     isolated_project_env: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch,

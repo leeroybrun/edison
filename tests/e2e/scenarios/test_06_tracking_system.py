@@ -452,6 +452,7 @@ def test_qa_lifecycle_via_promote(project_dir: TestProjectDir):
     # Create minimal required validator reports then approve (include specialized that block)
     vids = [
         ("global-codex", "codex"), ("global-claude", "claude"),
+        ("coderabbit", "coderabbit"),
         ("security", "codex"), ("performance", "codex"),
         ("react", "codex"), ("nextjs", "codex"), ("api", "codex"),
         ("prisma", "codex"), ("testing", "codex")

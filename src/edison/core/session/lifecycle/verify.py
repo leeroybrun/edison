@@ -230,7 +230,7 @@ def verify_session_health(session_id: str) -> dict[str, Any]:
                 msg = (
                     "Session-close evidence missing: "
                     + ", ".join(missing_close)
-                    + f". Capture + review session-close evidence (config-driven) using:\n  edison evidence init {anchor_id}\n  edison evidence capture {anchor_id} --session-close"
+                    + f". Capture + review session-close evidence (config-driven) using:\n  edison evidence capture {anchor_id} --session-close"
                 )
                 failures.append(msg)
                 health["categories"]["missingEvidence"].append(
@@ -241,7 +241,6 @@ def verify_session_health(session_id: str) -> dict[str, Any]:
                         "kind": "sessionCloseEvidence",
                         "missing": list(missing_close),
                         "suggested": [
-                            f"edison evidence init {anchor_id}",
                             f"edison evidence capture {anchor_id} --session-close",
                             f"edison evidence show {anchor_id} --command <name>",
                             "Review evidence output and fix failures before closing.",

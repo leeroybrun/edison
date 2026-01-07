@@ -1,5 +1,5 @@
-import os
 import time
+
 import pytest
 
 from edison.core.utils.resilience import retry_with_backoff
@@ -27,23 +27,28 @@ def test_retry_with_backoff_uses_config_defaults(tmp_path, monkeypatch):
         encoding="utf-8",
     )
 
-    attempt_times: list[float] = []
+    sleep_calls: list[float] = []
+
+    def _fake_sleep(seconds: float) -> None:
+        sleep_calls.append(float(seconds))
+
+    # Assert on requested delays rather than wall-clock sleep timing, which can be
+    # noisy across platforms / Python versions.
+    monkeypatch.setattr(time, "sleep", _fake_sleep)
 
     @retry_with_backoff()
     def flaky_operation():
-        attempt_times.append(time.perf_counter())
-        if len(attempt_times) < 4:
+        if len(sleep_calls) < 3:
             raise RuntimeError("transient failure")
         return "ok"
 
     result = flaky_operation()
 
     assert result == "ok"
-    assert len(attempt_times) == 4
+    assert len(sleep_calls) == 3
 
-    observed_delays = [attempt_times[i + 1] - attempt_times[i] for i in range(len(attempt_times) - 1)]
     expected_delays = [0.01, 0.02, 0.04]
 
-    for observed, expected in zip(observed_delays, expected_delays):
-        assert observed == pytest.approx(expected, rel=0.5, abs=0.02)
-    assert max(observed_delays) <= 0.07  # ensure max_delay_seconds respected with margin
+    for observed, expected in zip(sleep_calls, expected_delays, strict=True):
+        assert observed == pytest.approx(expected, rel=0.0, abs=1e-6)
+    assert max(sleep_calls) <= 0.05

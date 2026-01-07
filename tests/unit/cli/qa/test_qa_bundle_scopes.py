@@ -54,6 +54,9 @@ def test_qa_bundle_json_includes_scope_and_resolves_bundle_root(
     assert {t.get("taskId") for t in tasks} == {"T-ROOT", "T-A", "T-B"}
 
     # Bundle summary is written at the resolved root.
+    from edison.core.qa.evidence import EvidenceService
+
+    bundle_filename = EvidenceService("T-ROOT", project_root=isolated_project_env).bundle_filename
     bundle_path = (
         isolated_project_env
         / ".project"
@@ -61,6 +64,6 @@ def test_qa_bundle_json_includes_scope_and_resolves_bundle_root(
         / "validation-reports"
         / "T-ROOT"
         / "round-1"
-        / "validation-summary.md"
+        / bundle_filename
     )
     assert bundle_path.exists()

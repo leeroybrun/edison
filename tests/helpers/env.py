@@ -551,6 +551,33 @@ class TestGitRepo:
 
         return worktree_path
 
+    def commit_all(self, message: str) -> None:
+        """Commit all changes in the main repo.
+
+        Args:
+            message: Commit message
+        """
+        run_with_timeout(
+            ["git", "add", "-A"],
+            cwd=self.repo_path,
+            check=True,
+            capture_output=True
+        )
+        status = run_with_timeout(
+            ["git", "diff", "--cached", "--quiet"],
+            cwd=self.repo_path,
+            capture_output=True,
+            text=True,
+        )
+        if status.returncode == 0:
+            return
+        run_with_timeout(
+            ["git", "commit", "-m", message],
+            cwd=self.repo_path,
+            check=True,
+            capture_output=True
+        )
+
     def commit_in_worktree(self, worktree_path: Path, message: str) -> None:
         """Commit changes in a worktree.
 
@@ -564,6 +591,14 @@ class TestGitRepo:
             check=True,
             capture_output=True
         )
+        status = run_with_timeout(
+            ["git", "diff", "--cached", "--quiet"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+        )
+        if status.returncode == 0:
+            return
         run_with_timeout(
             ["git", "commit", "-m", message],
             cwd=worktree_path,

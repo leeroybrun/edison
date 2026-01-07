@@ -113,7 +113,7 @@ class ComposableRegistry(CompositionBase, Generic[T]):
 
     @property
     def discovery(self) -> LayerDiscovery:
-        """Lazy-initialized LayerDiscovery across core → packs → user → project."""
+        """Lazy-initialized LayerDiscovery across core → vendors → packs → user → project."""
         if self._discovery is None:
             type_cfg = self.comp_config.get_content_type(self.content_type)
             exclude_globs = (type_cfg.exclude_globs if type_cfg else []) or []
@@ -129,6 +129,7 @@ class ComposableRegistry(CompositionBase, Generic[T]):
                 file_pattern=self.file_pattern,
                 exclude_globs=exclude_globs,
                 allow_shadowing=bool(self.merge_same_name),
+                vendor_roots=resolver.vendor_roots,
             )
         return self._discovery
 
@@ -255,9 +256,16 @@ class ComposableRegistry(CompositionBase, Generic[T]):
 
         # Core layer
         result.update(self.discover_core())
+        existing = set(result.keys())
+
+        # Vendor layers (core < vendors < packs < overlay layers)
+        for _vendor_name, vendor_new, vendor_over in self.discovery.iter_vendor_layers(existing):
+            for name, source in vendor_new.items():
+                result[name] = source.path
+            for name, source in vendor_over.items():
+                result[name] = source.path
 
         # Pack layers (new + overlays, bundled + user + project pack roots)
-        existing = set(result.keys())
         for pack in packs:
             for _kind, pack_new, pack_over in self.discovery.iter_pack_layers(pack, existing):
                 for name, source in pack_new.items():
@@ -494,7 +502,7 @@ class ComposableRegistry(CompositionBase, Generic[T]):
             packs: List of active pack names
 
         Returns:
-            List of LayerContent in order (core → packs → user → project)
+            List of LayerContent in order (core → vendors → packs → user → project)
         """
         layers: List[LayerContent] = []
 
@@ -513,6 +521,13 @@ class ComposableRegistry(CompositionBase, Generic[T]):
             if source_path and source_path.exists():
                 content = source_path.read_text(encoding="utf-8")
                 layers.append(LayerContent(content=content, source=source_label, path=source_path))
+
+        # Vendors (core < vendors < packs < overlay layers)
+        for vendor_name, vendor_new, vendor_over in self.discovery.iter_vendor_layers(existing):
+            if name in vendor_new and (self.merge_same_name or name not in core_entities):
+                _append(vendor_new[name].path, f"vendor:{vendor_name}")
+            if name in vendor_over:
+                _append(vendor_over[name].path, f"vendor:{vendor_name}")
 
         # Packs (bundled + user + project pack roots)
         for pack in packs:

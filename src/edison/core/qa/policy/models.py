@@ -79,7 +79,10 @@ class ValidationPolicy:
     @property
     def blocking_validators(self) -> list[str]:
         """Return the list of blocking validators from the preset."""
-        return self.preset.blocking_validators
+        blocking = self.preset.blocking_validators
+        if blocking is None:
+            return list(self.preset.validators)
+        return list(blocking)
 
     @property
     def required_evidence(self) -> list[str]:

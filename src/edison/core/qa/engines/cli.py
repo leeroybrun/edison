@@ -342,6 +342,33 @@ class CLIEngine:
         Returns:
             List of command parts
         """
+        def _format_parts(parts: list[str]) -> list[str]:
+            """Format flag parts using a minimal template context.
+
+            Supports `{worktree_path}` (and `{worktree}` as an alias) so config can
+            inject worktree-aware flags without hardcoding per-validator logic.
+            """
+            formatted: list[str] = []
+            worktree_s = str(worktree_path)
+            for raw in parts:
+                p = str(raw)
+                if "{" not in p:
+                    formatted.append(p)
+                    continue
+
+                # Prefer explicit token replacement over `str.format()`.
+                #
+                # Rationale:
+                # - Validators frequently want literal braces in prompts/flags.
+                # - Some configs may use escaped braces like `{{worktree_path}}` which
+                #   `str.format()` would interpret differently.
+                # - We only support a tiny token surface area here by design.
+                out = p
+                out = out.replace("{{worktree_path}}", worktree_s).replace("{{worktree}}", worktree_s)
+                out = out.replace("{worktree_path}", worktree_s).replace("{worktree}", worktree_s)
+                formatted.append(out)
+            return formatted
+
         cmd: list[str] = [self.command]
 
         # When running from project root, add cd_flag to point to the worktree.
@@ -352,7 +379,7 @@ class CLIEngine:
             cmd.extend([self.config.cd_flag, str(worktree_abs)])
 
         # Some CLIs (e.g., Codex) require global flags before the subcommand.
-        cmd.extend(self.config.pre_flags)
+        cmd.extend(_format_parts(self.config.pre_flags))
 
         # Add writable directory flags (e.g., --add-dir for codex sandbox).
         # Note: On macOS, this only works for paths within the sandbox root.
@@ -391,10 +418,10 @@ class CLIEngine:
                 prompt_args = []
 
         # Add output format flags
-        cmd.extend(self.config.output_flags)
+        cmd.extend(_format_parts(self.config.output_flags))
 
         # Add read-only flags
-        cmd.extend(self.config.read_only_flags)
+        cmd.extend(_format_parts(self.config.read_only_flags))
 
         if prompt_args is not None:
             cmd.extend(prompt_args)
@@ -467,13 +494,16 @@ class CLIEngine:
         ]
         try:
             raw_web = getattr(validator, "web_server", None)
-            if isinstance(raw_web, dict):
-                url = str(raw_web.get("url", raw_web.get("base_url", raw_web.get("baseUrl"))) or "").strip()
-                if url:
-                    prelude_lines.append(f"- Web Server URL: {url}")
-                health = str(raw_web.get("healthcheck_url", raw_web.get("healthcheckUrl", raw_web.get("healthcheck"))) or "").strip()
-                if health:
-                    prelude_lines.append(f"- Web Server Probe: {health}")
+            if raw_web is not None:
+                from edison.core.config import ConfigManager
+                from edison.core.web_server import WebServerConfig, resolve_web_server_config
+
+                cfg = ConfigManager(repo_root=worktree_path).load_config(validate=False, include_packs=True)
+                resolved = resolve_web_server_config(full_config=cfg, validator_web_server=raw_web)
+                parsed = WebServerConfig.from_raw(resolved) if resolved is not None else None
+                if parsed is not None:
+                    prelude_lines.append(f"- Web Server URL: {parsed.url}")
+                    prelude_lines.append(f"- Web Server Probe: {parsed.probe_url}")
         except Exception:
             pass
         if round_dir:
@@ -665,7 +695,7 @@ class CLIEngine:
         # Determine verdict from exit code and response
         response = parsed.get("response", "")
         error = parsed.get("error")
-        extracted_verdict = self._extract_verdict_from_response(response)
+        extracted_verdict = self._extract_verdict_from_response(response, validator_id=validator.id)
 
         if exit_code != 0:
             verdict = "error"
@@ -688,7 +718,7 @@ class CLIEngine:
             context7_packages=validator.context7_packages,
         )
 
-    def _extract_verdict_from_response(self, response: str) -> str | None:
+    def _extract_verdict_from_response(self, response: str, *, validator_id: str | None = None) -> str | None:
         """Try to extract verdict from response text.
 
         Looks for common patterns like "APPROVED", "REJECTED", etc.
@@ -715,6 +745,22 @@ class CLIEngine:
                 return "blocked"
             if token.startswith("pend"):
                 return "pending"
+
+        # CodeRabbit CLI output may mention words like "reject" in explanatory text,
+        # so infer verdicts from its structured finding types rather than generic keywords.
+        if (validator_id or "").strip().lower() == "coderabbit" and "review completed" in response_lower:
+            types = re.findall(r"\btype:\s*([a-z_]+)\b", response_lower)
+            if not types:
+                logger.warning(
+                    "CodeRabbit output missing finding types; failing closed (validator_id=%s, snippet=%r)",
+                    validator_id,
+                    response_lower[:300],
+                )
+                return "reject"
+
+            if any(t in {"critical_issue", "bug", "security_issue", "performance_issue"} for t in types):
+                return "reject"
+            return "approve"
 
         # Fail-closed heuristics:
         # - Never infer "approve" from incidental language like "please approve" or "needs approval".

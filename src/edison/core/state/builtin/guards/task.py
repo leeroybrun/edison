@@ -151,7 +151,7 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
 
                         lines.append(f"Evidence dir: {evidence_dir}")
                         lines.append("Fix:")
-                        lines.append(f"  - edison evidence init {task_id}  # if no round exists yet")
+                        lines.append(f"  - edison qa round prepare {task_id}  # if no round exists yet")
                         lines.append(
                             f"  - edison task done {task_id} --skip-context7 --skip-context7-reason \"<verified false positive>\""
                         )

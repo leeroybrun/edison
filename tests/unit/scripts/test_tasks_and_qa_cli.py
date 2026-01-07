@@ -161,7 +161,7 @@ Validation scope
     assert "approve" in content
 
 
-def test_qa_round_does_not_create_evidence_dir_without_new_flag(tmp_path: Path) -> None:
+def test_qa_round_set_status_does_not_create_evidence_dir(tmp_path: Path) -> None:
     """`edison qa round set-status` appends QA history only.
 
     Evidence directories are created explicitly via `edison qa round prepare`.
@@ -190,7 +190,7 @@ round: 1
     assert payload["round"] == 2
 
     evidence_root = root / ".project" / "qa" / "validation-reports" / task_id
-    assert not evidence_root.exists(), "qa round created evidence dirs without --new"
+    assert not evidence_root.exists(), "qa round set-status should not create evidence dirs"
 
 
 def test_qa_validate_reports_cli_disabled_by_config_instead_of_cli_missing(tmp_path: Path) -> None:

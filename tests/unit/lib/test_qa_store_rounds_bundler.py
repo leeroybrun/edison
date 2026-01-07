@@ -40,16 +40,8 @@ def test_bundler_path_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     setup_project_root(monkeypatch, tmp_path)
     from edison.core.qa import bundler
 
-    cfg: Dict[str, object] = {
-        "validation": {
-            "artifactPaths": {
-                "bundleSummaryFile": "bundle-summary.md",
-            }
-        }
-    }
-
-    path = bundler.bundle_summary_path("t-2", 1, config=cfg)
-    assert path == tmp_path / ".project" / "qa" / "validation-reports" / "t-2" / "round-1" / "bundle-summary.md"
+    path = bundler.bundle_summary_path("t-2", 1, config={})
+    assert path == tmp_path / ".project" / "qa" / "validation-reports" / "t-2" / "round-1" / "validation-summary.md"
 
 
 def test_evidence_service_bundle_round_trip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

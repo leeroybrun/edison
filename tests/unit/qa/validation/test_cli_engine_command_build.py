@@ -96,3 +96,43 @@ def test_cli_engine_adds_cd_flag_when_run_from_project_root() -> None:
     assert cmd[3:5] == ["--sandbox", "workspace-write"]
     assert "exec" in cmd
     assert "--json" in cmd
+
+
+def test_cli_engine_formats_worktree_tokens_in_flags() -> None:
+    """Engine config flags may reference `{worktree_path}` / `{worktree}` tokens.
+
+    These should be expanded deterministically so CLIs can be configured
+    without hardcoding per-validator logic in the engine.
+    """
+    cfg = EngineConfig.from_dict(
+        "coderabbit-cli",
+        {
+            "type": "cli",
+            "command": "coderabbit",
+            "subcommand": "review",
+            "read_only_flags": [
+                "--cwd",
+                "{worktree_path}",
+                "--cwd",
+                "{{worktree_path}}",
+                "--cwd",
+                "{worktree}",
+                "--cwd",
+                "{{worktree}}",
+            ],
+            "prompt_mode": "stdin",
+            "stdin_prompt_arg": "-",
+            "response_parser": "plain_text",
+        },
+    )
+    engine = CLIEngine(cfg)
+    validator = ValidatorMetadata(id="coderabbit", name="CodeRabbit", engine="coderabbit-cli", wave="global")
+
+    worktree_path = Path("/tmp/worktree-path")
+    cmd = engine._build_command(validator, worktree_path, prompt_args=["-"])
+
+    assert "{worktree_path}" not in cmd
+    assert "{{worktree_path}}" not in cmd
+    assert "{worktree}" not in cmd
+    assert "{{worktree}}" not in cmd
+    assert str(worktree_path) in cmd

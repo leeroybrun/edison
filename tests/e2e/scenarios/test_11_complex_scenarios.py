@@ -710,6 +710,11 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
     child1_id = "650.1-wave1-child1"
     child2_id = "650.2-wave1-child2"
 
+    from edison.core.config.manager import ConfigManager
+    cfg = ConfigManager(repo_root=project_dir.tmp_path).load_config()
+    bundle_summary_name = cfg.get("validation", {}).get("artifactPaths", {}).get("bundleSummaryFile")
+    assert bundle_summary_name
+
     # Create session
     assert_command_success(
         run_script("session", ["new", "--owner", "test", "--session-id", session_id, "--mode", "start"], cwd=project_dir.tmp_path)
@@ -738,6 +743,9 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
         rd = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
         rd.mkdir(parents=True, exist_ok=True)
 
+        # Minimal command capture evidence required by the fast preset.
+        (rd / "command-test.txt").write_text("scripts/test-fast\nExit code: 0\n", encoding="utf-8")
+
         # Implementation report
         impl_report = {
             "taskId": task_id,
@@ -764,6 +772,7 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
         for validator_id, model in [
             ("global-codex", "codex"),
             ("global-claude", "claude"),
+            ("coderabbit", "coderabbit"),
             ("security", "codex"),
             ("performance", "codex"),
             ("prisma", "codex"),

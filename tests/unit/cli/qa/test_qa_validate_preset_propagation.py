@@ -67,14 +67,12 @@ def test_qa_validate_execute_uses_preset_in_executor_auto_mode(
             scope="hierarchy",
             session=None,
             round=1,
-            new_round=False,
             wave="deep_test",
             preset="deep",
             validators=None,
             add_validators=None,
             blocking_only=False,
             execute=True,
-            check_only=False,
             sequential=True,
             dry_run=False,
             max_workers=1,
@@ -152,14 +150,12 @@ def test_qa_validate_execute_without_preset_uses_validation_default_preset(
             scope="hierarchy",
             session=None,
             round=1,
-            new_round=False,
             wave="deep_test",
             preset=None,
             validators=None,
             add_validators=None,
             blocking_only=False,
             execute=True,
-            check_only=False,
             sequential=True,
             dry_run=False,
             max_workers=1,
@@ -179,7 +175,7 @@ def test_qa_validate_execute_without_preset_uses_validation_default_preset(
 
 
 @pytest.mark.qa
-def test_qa_validate_check_only_uses_preset_blocking_set_and_allows_empty_blocking(
+def test_qa_round_summarize_verdict_uses_preset_blocking_set_and_allows_empty_blocking(
     isolated_project_env: Path,
     monkeypatch,
 ) -> None:

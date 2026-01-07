@@ -7,7 +7,8 @@ Public API:
 """
 from __future__ import annotations
 
-from edison.core.session.next.compute import compute_next, main
+from edison.core.session.next.compute import compute_next
+from edison.core.session.next.cli import main
 
 def _all_task_files():
     """Backward-compat helper: list all task files (global + session-scoped)."""

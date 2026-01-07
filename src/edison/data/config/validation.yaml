@@ -97,7 +97,7 @@ validation:
       command: "coderabbit"
       subcommand: "review"
       output_flags: []
-      read_only_flags: ["--prompt-only"]
+      read_only_flags: ["--plain", "--cwd", "{worktree_path}"]
       response_parser: coderabbit
       prompt_mode: file
       prompt_flag: "--config"

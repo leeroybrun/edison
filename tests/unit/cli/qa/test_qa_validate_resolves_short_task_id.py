@@ -31,14 +31,12 @@ def test_qa_validate_resolves_short_task_id(
             scope=None,
             session=None,
             round=1,
-            new_round=False,
             wave=None,
             preset=None,
             validators=None,
             add_validators=None,
             blocking_only=False,
             execute=False,
-            check_only=False,
             sequential=False,
             dry_run=True,
             max_workers=None,
@@ -51,4 +49,3 @@ def test_qa_validate_resolves_short_task_id(
     payload = json.loads(capsys.readouterr().out)
     assert payload["task_id"] == full_task_id
     assert payload["roster"]["taskId"] == full_task_id
-

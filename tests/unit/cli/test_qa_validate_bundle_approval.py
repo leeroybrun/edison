@@ -111,7 +111,6 @@ def test_bundle_approval_ignores_validator_filter(isolated_project_env: Path) ->
         add_validators=None,
         blocking_only=False,
         execute=False,
-        check_only=False,
         sequential=True,
         dry_run=False,
         max_workers=1,

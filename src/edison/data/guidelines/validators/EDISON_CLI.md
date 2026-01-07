@@ -89,24 +89,23 @@ edison qa bundle TASK-123
 ### Start Validation Round
 
 ```bash
-edison qa round <task-id> --status <status>
+edison qa round prepare <task-id>
 ```
 
-**Purpose**: Record validator outcomes for a validation round
-**When to use**: After running validation checks
+**Purpose**: Prepare the active QA round directory (round-N) for validation artifacts.
+**When to use**: Before running validators so you have the correct round directory ready.
 
-**Inspect rounds:**
+**Record round status in the QA brief (history only):**
 ```bash
-edison qa round <task-id> --current
-edison qa round <task-id> --list
+edison qa round set-status <task-id> --status <approve|reject|blocked|pending> [--note "..."]
 ```
 
-**Create a new evidence round directory (round-N/):**
+**Summarize validator results into the canonical validation summary:**
 ```bash
-edison qa round <task-id> --new
+edison qa round summarize-verdict <task-id> --preset <preset>
 ```
 
-> Note: `edison qa round --status …` appends round history; it does not create evidence directories unless you pass `--new`.
+> Note: `set-status` updates QA history only. `prepare` manages the round directory and report scaffolding.
 
 **Statuses:**
 - `approve` - All checks pass
@@ -116,7 +115,7 @@ edison qa round <task-id> --new
 
 **Example:**
 ```bash
-edison qa round TASK-123 --status approve
+edison qa round set-status TASK-123 --status approve --note "global-codex, global-claude"
 ```
 
 ---

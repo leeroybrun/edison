@@ -66,4 +66,3 @@ def test_cli_engine_can_execute_allows_all_when_true(
     monkeypatch.setattr(shutil, "which", lambda _: "/bin/true")
 
     assert engine.can_execute() is True
-

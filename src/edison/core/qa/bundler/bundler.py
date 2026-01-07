@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from ...legacy_guard import enforce_no_legacy_project_root
-from edison.core.config.domains.qa import QAConfig
 from ..evidence import EvidenceService
 
 
@@ -24,27 +23,13 @@ enforce_no_legacy_project_root("lib.qa.bundler")
 
 
 def bundle_summary_filename(config: Optional[Dict[str, Any]] = None) -> str:
-    """Get the bundle summary filename from configuration.
-    
-    Args:
-        config: Optional configuration dict (defaults to QAConfig)
-        
-    Returns:
-        Bundle summary filename string
-        
-    Raises:
-        RuntimeError: If bundleSummaryFile not configured
+    """Return the canonical validation summary filename.
+
+    NOTE: `config` is accepted for backwards compatibility but ignored. Writers
+    always emit the canonical filename (`validation-summary.md`) even if older
+    configs still reference the legacy name.
     """
-    cfg = config or QAConfig().validation_config
-    if isinstance(cfg, dict) and "artifactPaths" not in cfg and "validation" in cfg:
-        cfg = cfg.get("validation", {}) or {}
-    paths = cfg.get("artifactPaths", {}) if isinstance(cfg, dict) else {}
-    name = paths.get("bundleSummaryFile") if isinstance(paths, dict) else None
-    if not name:
-        raise RuntimeError(
-            "validation.artifactPaths.bundleSummaryFile missing in configuration"
-        )
-    return str(name)
+    return "validation-summary.md"
 
 
 def bundle_summary_path(task_id: str, round_num: int, *, config: Optional[Dict[str, Any]] = None) -> Path:
@@ -58,10 +43,9 @@ def bundle_summary_path(task_id: str, round_num: int, *, config: Optional[Dict[s
     Returns:
         Path to bundle summary file
     """
-    filename = bundle_summary_filename(config)
     ev_svc = EvidenceService(task_id)
     base = ev_svc.get_evidence_root()
-    return base / f"round-{int(round_num)}" / filename
+    return base / f"round-{int(round_num)}" / ev_svc.bundle_filename
 
 
 __all__ = [

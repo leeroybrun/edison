@@ -7,7 +7,7 @@ import pytest
 
 
 @pytest.mark.qa
-def test_qa_validate_new_round_initializes_implementation_report(
+def test_qa_round_prepare_initializes_round_artifacts(
     isolated_project_env: Path,
     monkeypatch,
 ) -> None:

@@ -42,13 +42,11 @@ def test_qa_validate_preflight_bundle_scope_uses_root_evidence_round(
             scope="bundle",
             session=None,
             round=1,
-            new_round=False,
             wave=None,
             validators=None,
             add_validators=None,
             blocking_only=False,
             execute=False,
-            check_only=False,
             sequential=False,
             dry_run=True,
             max_workers=None,
@@ -64,4 +62,3 @@ def test_qa_validate_preflight_bundle_scope_uses_root_evidence_round(
     evidence_item = next(i for i in checklist["items"] if i["id"] == "evidence-round")
     expected = str(Path(".project/qa/validation-reports") / root_task / "round-1")
     assert expected in (evidence_item.get("evidencePaths") or [])
-

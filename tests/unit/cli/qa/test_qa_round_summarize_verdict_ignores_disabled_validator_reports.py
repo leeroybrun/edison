@@ -8,7 +8,7 @@ import pytest
 
 
 @pytest.mark.qa
-def test_qa_validate_check_only_ignores_disabled_validator_reports(
+def test_qa_round_summarize_verdict_ignores_disabled_validator_reports(
     isolated_project_env: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch,

@@ -18,16 +18,16 @@ Usage:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from edison.core.config.cache import get_cached_config
 
 
 def load_config_section(
     section_name: str,
-    repo_root: Optional[Path] = None,
+    repo_root: Path | None = None,
     required: bool = True
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Load a specific section from config.
 
     Args:
@@ -56,12 +56,12 @@ def load_config_section(
 
 
 def _resolve_section_from_config(
-    config: Dict[str, Any],
-    section_path: str | List[str],
+    config: dict[str, Any],
+    section_path: str | list[str],
     *,
-    required_fields: Optional[List[str]] = None,
-    required_subsections: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    required_fields: list[str] | None = None,
+    required_subsections: list[str] | None = None,
+) -> dict[str, Any]:
     """Resolve and validate a config section from the already-loaded config dict."""
 
     # Navigate to section (handle both string and list paths)
@@ -98,12 +98,12 @@ def _resolve_section_from_config(
 
 
 def load_validated_section(
-    section_path: str | List[str],
+    section_path: str | list[str],
     *,
-    required_fields: Optional[List[str]] = None,
-    required_subsections: Optional[List[str]] = None,
-    repo_root: Optional[Path] = None
-) -> Dict[str, Any]:
+    required_fields: list[str] | None = None,
+    required_subsections: list[str] | None = None,
+    repo_root: Path | None = None
+) -> dict[str, Any]:
     """Load and validate a config section with strict requirements.
 
     This function provides a centralized way to load config sections with
@@ -143,7 +143,23 @@ def load_validated_section(
     )
 
 
+def safe_dict(value: object) -> dict[str, Any]:
+    """Safely coerce a value to a dict.
+
+    Returns the value if it's a dict, otherwise returns an empty dict.
+    Useful for accessing nested config sections that may be None.
+
+    Args:
+        value: Any value that might be a dict
+
+    Returns:
+        The value if dict, otherwise empty dict
+    """
+    return value if isinstance(value, dict) else {}
+
+
 __all__ = [
     "load_config_section",
     "load_validated_section",
+    "safe_dict",
 ]

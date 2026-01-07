@@ -198,9 +198,34 @@ rules:
     Parallelize when it improves throughput:
     - Split work into independent slices (API/UI/DB/tests) when coupling is low.
     - Respect the configured concurrency cap; batch overflow instead of over-assigning.
-    - Keep validators independent from implementers.
 
-    Reference: `guidelines/orchestrators/DELEGATION.md`
+- id: RULE.CONTEXT.CWAM_REASSURANCE
+  title: Context window anxiety management (CWAM)
+  category: context
+  blocking: false
+  severity: info
+  applies_to: [agent, orchestrator, validator]
+  contexts: [context_window]
+  guidance: |
+    Keep working methodically and protect context:
+    - Prefer small, deterministic steps over rushing.
+    - Avoid pasting large logs; summarize and reference artifacts by path.
+    - If approaching limits, follow the project's compaction/recovery guidance.
+
+- id: RULE.CONTINUATION.NO_IDLE_UNTIL_COMPLETE
+  title: Do not stop early; continue until the session is complete
+  category: session
+  blocking: false
+  severity: warning
+  applies_to: [agent, orchestrator]
+  contexts: [continuation]
+  guidance: |
+    When continuation is enabled and work remains:
+    - Continue iterating until Edison reports the session complete.
+    - Use the loop driver: `edison session next <session-id>`
+    - Do not stop early when work remains.
+
+    Reference: `docs/CONTINUATION.md`
 - id: RULE.GUARDS.FAIL_CLOSED
   title: 'Fail-Closed: All Moves Through Guarded Python CLIs'
   category: transition
@@ -533,3 +558,22 @@ rules:
     - Combine multiple small snippets when cross-references are required instead of dumping a full file.
 
     Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`
+- id: RULE.EXECUTION.NONINTERACTIVE
+  title: Avoid interactive commands in non-interactive environments
+  category: execution
+  blocking: false
+  severity: warning
+  applies_to: [agent, orchestrator]
+  contexts: [execution, guidance]
+  guidance: |
+    When running shell commands in non-interactive environments (LLMs, agents):
+    - Avoid interactive commands that can hang (vim, vi, nano, less, more, top, htop).
+    - Prefer non-interactive flags (--yes, --no-pager, --quiet, -y).
+    - Use environment variables to disable interactive behavior (CI=1, PAGER=cat, GIT_PAGER=cat).
+    - Wrap potentially hanging commands with `timeout`.
+    - Use `git --no-pager log` instead of `git log`.
+    - Use `cat` instead of `less` for viewing files.
+    - If an interactive command is necessary, request explicit user approval first.
+  cli:
+    commands: ["exec"]
+    timing: before

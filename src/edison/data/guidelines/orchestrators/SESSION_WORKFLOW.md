@@ -174,7 +174,7 @@ Close a session only when all scoped tasks are `{{fn:semantic_state("task","vali
 
 2. **Sub-agent will handle:**
    - ✅ Calling `edison session track start` (their mandatory first step)
-   - ✅ Initializing evidence round: `edison evidence init <task-id>`
+   - ✅ Preparing the active QA round: `edison qa round prepare <task-id>`
    - ✅ Following TDD (RED → GREEN → REFACTOR)
    - ✅ Querying Context7 for post-training packages
    - ✅ Filling implementation report as they work
@@ -202,7 +202,7 @@ Close a session only when all scoped tasks are `{{fn:semantic_state("task","vali
 
 1. **YOU must follow the agent constitution (run `edison read AGENTS --type constitutions`):**
    - Call `edison session track start --task <id> --type implementation --model claude`
-   - Initialize evidence: `edison evidence init <task-id>`
+   - Prepare the active QA round: `edison qa round prepare <task-id>`
    - Follow TDD, query Context7, fill report
    - Run and capture evidence: `edison evidence capture <task-id>`
    - Fix any failures before proceeding

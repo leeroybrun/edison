@@ -83,7 +83,10 @@ def _handle_save(args: argparse.Namespace, formatter: OutputFormatter, project_r
     else:
         rd = ev.get_current_round_dir()
         if rd is None:
-            formatter.error(RuntimeError(f"No evidence round exists. Run `edison evidence init {task_id}` first."), error_code="no_round")
+            formatter.error(
+                RuntimeError(f"No QA round exists. Run `edison qa round prepare {task_id}` first."),
+                error_code="no_round",
+            )
             return 1
         round_num = rounds.get_round_number(rd)
 
@@ -122,7 +125,10 @@ def _handle_list(args: argparse.Namespace, formatter: OutputFormatter, project_r
     else:
         rd = ev.get_current_round_dir()
         if rd is None:
-            formatter.error(RuntimeError(f"No evidence round exists. Run `edison evidence init {task_id}` first."), error_code="no_round")
+            formatter.error(
+                RuntimeError(f"No QA round exists. Run `edison qa round prepare {task_id}` first."),
+                error_code="no_round",
+            )
             return 1
         round_num = rounds.get_round_number(rd)
 

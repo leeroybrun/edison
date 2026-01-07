@@ -76,7 +76,7 @@ def main(args: argparse.Namespace) -> int:
                 raise ValueError(
                     "`edison task ready --run` is no longer supported.\n"
                     "Use:\n"
-                    "  - `edison evidence init <task>`\n"
+                    "  - `edison qa round prepare <task>`\n"
                     "  - `edison evidence capture <task>`\n"
                     "  - `edison evidence status <task>`\n"
                     "Then review the evidence output and run `edison task done <task>`."

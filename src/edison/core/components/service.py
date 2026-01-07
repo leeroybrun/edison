@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
@@ -31,6 +31,7 @@ class ComponentSetupSpec:
     required_config: list[str]
     optional_config: list[str]
     instructions: str | None = None
+    templates: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -207,6 +208,14 @@ class ComponentService:
             written.append(self._apply_template_patch(self._agents_config_path(), rendered))
         else:
             raise ValueError(f"Unknown component kind: {kind}")
+
+        # Optional template materialization (e.g. script scaffolds).
+        try:
+            written.extend(self._install_templates(spec.templates))
+        except Exception:
+            # Best-effort: configuring a component should not fail just because
+            # template installation is unavailable in a minimal environment.
+            pass
 
         missing = self._missing_required_config(spec.required_config)
         if missing:
@@ -451,12 +460,31 @@ class ComponentService:
         instructions = raw.get("instructions")
         inst = str(instructions) if instructions is not None else None
 
+        templates_raw = raw.get("templates") or []
+        templates: list[dict[str, Any]] = []
+        if isinstance(templates_raw, list):
+            for item in templates_raw:
+                if not isinstance(item, dict):
+                    continue
+                src = str(item.get("src") or item.get("source") or "").strip()
+                dest = str(item.get("dest") or item.get("destination") or "").strip()
+                if not src or not dest:
+                    continue
+                templates.append(
+                    {
+                        "src": src,
+                        "dest": dest,
+                        "executable": bool(item.get("executable", True)),
+                    }
+                )
+
         return ComponentSetupSpec(
             questions=questions,
             config_template=config_template,
             required_config=required_config,
             optional_config=optional_config,
             instructions=inst,
+            templates=templates,
         )
 
     def _missing_required_config(self, required: list[str]) -> list[str]:
@@ -485,6 +513,48 @@ class ComponentService:
             elif isinstance(v, dict) and len(v) == 0:
                 missing.append(path)
         return missing
+
+    def _install_templates(self, templates: list[dict[str, Any]]) -> list[Path]:
+        if not templates:
+            return []
+
+        from edison.core.composition.output.writer import CompositionFileWriter
+        from edison.core.composition.registries._types_manager import ComposableTypesManager
+        from edison.core.config.domains.packs import PacksConfig
+
+        packs = PacksConfig(repo_root=self.repo_root).active_packs
+        manager = ComposableTypesManager(self.repo_root)
+        available = manager.compose_type("scripts", packs)
+
+        writer = CompositionFileWriter()
+        written: list[Path] = []
+
+        for item in templates:
+            src = str(item.get("src") or "").strip()
+            dest = str(item.get("dest") or "").strip()
+            if not src or not dest:
+                continue
+
+            content = available.get(src)
+            if not isinstance(content, str) or not content:
+                continue
+
+            out_path = (self.repo_root / dest).expanduser().resolve()
+            try:
+                out_path.relative_to(self.repo_root)
+            except Exception:
+                continue
+
+            if out_path.exists():
+                continue
+
+            if bool(item.get("executable", True)):
+                writer.write_executable(out_path, content)
+            else:
+                writer.write_text(out_path, content)
+            written.append(out_path)
+
+        return written
 
     def _should_ask(self, question: dict[str, Any], ctx: dict[str, Any]) -> bool:
         cond = question.get("when")

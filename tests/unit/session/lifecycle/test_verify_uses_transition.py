@@ -2,10 +2,10 @@
 
 P0-GB-001: verify.py should use transition_entity() instead of direct state assignment.
 """
+from __future__ import annotations
+
 import pytest
 from pathlib import Path
-from unittest.mock import patch
-from typing import Dict, Any, List
 
 
 class TestVerifySessionHealthUsesTransition:

@@ -53,12 +53,14 @@ mcp__context7__get_library_docs({
 
 ### Step 2.5: Ensure the App Web Server is Reachable
 
-- If Edison is configured with `validation.validators.browser-e2e.web_server`, it will **ensure a web server is reachable** before validation starts (and stop it afterwards *only if Edison started it*).
+- If Edison is configured with `validation.validators.browser-e2e.web_server`, it will **ensure the server/stack is correct** before validation starts (and stop it afterwards *only if Edison started it*).
+- If `web_server.verify.steps` are configured, Edison runs those steps even if the URL is already responsive (verification is the source of truth).
 - Use the `Web Server URL` shown in the validator run prelude (if present) as your base URL for MCP navigation.
 - If no URL is provided, infer it from the project’s Playwright config (`use.baseURL` / `webServer`) or project docs.
 - Prefer the project config as the source of truth. You can read it via Edison CLI:
   - `edison config show validation.validators.browser-e2e.web_server --format yaml`
-  - `edison config show validation.validators.browser-e2e.web_server.url --format json`
+  - `edison config show validation.web_servers.browser-e2e --format yaml`
+  - `edison config show validation.web_servers.browser-e2e.url --format json`
 - If the required config is missing, instruct the user to configure it before proceeding:
   - `edison validator configure browser-e2e --mode advanced`
 

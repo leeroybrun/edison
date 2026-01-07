@@ -1579,7 +1579,7 @@ edison qa show <qa_id> [options]
 
 ### qa validate - Run Validators
 
-Run validators against a task bundle.
+Run validators against a task (optionally using a bundle/hierarchy scope).
 
 ```bash
 edison qa validate <task_id> [options]
@@ -1597,7 +1597,7 @@ edison qa validate <task_id> [options]
 | `--session` | Session ID context |
 | `--round` | Validation round number (default: use current active round; fails closed if none) |
 | `--wave` | Specific wave to validate (e.g., `critical`, `comprehensive`) |
-| `--preset` | Validation preset override (e.g., `fast`, `standard`, `strict`, `deep`) |
+| `--preset` | Validation preset override (project-defined; e.g., `fast`, `standard`, `strict`, `deep`, `bundle`) |
 | `--validators` | Specific validator IDs to run (space-separated) |
 | `--add-validators` | Extra validators to add: `react` (default wave) or `critical:react` (specific wave) |
 | `--blocking-only` | Only run blocking validators |
@@ -1629,6 +1629,10 @@ edison qa round prepare 150-auth-feature
 
 # Validate a bundle of related tasks (defined via `bundle_root`)
 edison qa validate 150-auth-feature --scope bundle --execute
+
+# Validate a parent/meta task plus its children (work decomposition)
+# Note: presets are project-defined; use a preset tuned for meta/bundle validation if available.
+edison qa validate <parent-task> --scope hierarchy --preset bundle --execute
 
 # Show what would be executed
 edison qa validate 150-auth-feature --dry-run

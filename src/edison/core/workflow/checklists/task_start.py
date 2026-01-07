@@ -127,7 +127,7 @@ class TaskStartChecklistEngine:
                 rationale="Evidence round directory must exist before starting work.",
                 status="missing",
                 evidence_paths=[],
-                suggested_commands=[f"edison evidence init {task_id}"],
+                suggested_commands=[f"edison qa round prepare {task_id}"],
             )
 
         round_dir = ev_svc.get_current_round_dir()
@@ -156,7 +156,7 @@ class TaskStartChecklistEngine:
                 status="unknown",
                 evidence_paths=[],
                 suggested_commands=[
-                    f"edison evidence init {task_id}",
+                    f"edison qa round prepare {task_id}",
                     "Create implementation-report.md with YAML frontmatter",
                 ],
             )
@@ -253,4 +253,3 @@ __all__ = [
     "ChecklistResult",
     "TaskStartChecklistEngine",
 ]
-

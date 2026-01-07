@@ -72,7 +72,7 @@ def build_context7_status(task_id: str, session_id: str | None) -> dict[str, Any
     if rd is None:
         result["missing"] = sorted(required_pkgs)
         result["suggested_commands"] = [
-            f"edison evidence init {task_id}",
+            f"edison qa round prepare {task_id}",
             "edison evidence context7 template <package>",
         ]
         return result

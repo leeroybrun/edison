@@ -1184,21 +1184,23 @@ validation:
       # Explicitly no required evidence for docs-only changes.
       required_evidence: []
 
-	    standard:
-	      name: standard
-	      description: "Standard validation for code changes"
-	      validators: [security, performance]
-	      # NOTE: omit `required_evidence` to inherit the baseline requiredFiles below.
+    standard:
+      name: standard
+      description: "Standard validation for code changes"
+      validators: [security, performance]
+      # NOTE: omit `required_evidence` to inherit the baseline requiredFiles below.
 
-	    strict:
-	      name: strict
-	      description: "Comprehensive validation for critical changes"
-	      validators: [global-gemini, security, performance, coderabbit]
-	      required_evidence:
-	        - "command-type-check.txt"
-	        - "command-lint.txt"
-	        - "command-test-full.txt"
-	        - "command-build.txt"
+    strict:
+      name: strict
+      description: "Comprehensive validation for critical changes"
+      validators: [global-gemini, security, performance, coderabbit]
+      required_evidence:
+        - "command-type-check.txt"
+        - "command-lint.txt"
+        - "command-test-full.txt"
+        - "command-build.txt"
+      # Optional: explicitly mark a subset of validators as blocking for this preset
+      blocking_validators: [security, performance]
 
   presetInference:
     rules:
@@ -1235,6 +1237,11 @@ validation:
       test: "command-test.txt"
       build: "command-build.txt"
 ```
+
+**Preset “blocking” semantics**
+
+- Per-validator: a validator can be marked blocking in `validation.validators.<id>.blocking: true`.
+- Per-preset override: a preset may specify `blocking_validators: [...]` to force a set of validators to be treated as blocking for that preset.
 
 **`required_evidence` semantics**
 

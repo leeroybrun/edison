@@ -183,8 +183,8 @@ class MarkdownCompositionStrategy(CompositionStrategy):
         for name in registry.sections:
             content = registry.get_section_content(name)
             pattern = re.compile(
-                rf"<!--\s*section:\s*{re.escape(name)}\s*-->(.*?)<!--\s*/section:\s*{re.escape(name)}\s*-->",
-                re.DOTALL | re.IGNORECASE,
+                rf"{self.parser._OPTIONAL_LINE_PREFIX}<!--\s*section:\s*{re.escape(name)}\s*-->(.*?){self.parser._OPTIONAL_LINE_PREFIX}<!--\s*/section:\s*{re.escape(name)}\s*-->",
+                re.DOTALL | re.IGNORECASE | re.MULTILINE,
             )
             result = pattern.sub(content, result)
 
