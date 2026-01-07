@@ -208,14 +208,22 @@ def main(args: argparse.Namespace) -> int:
             formatter.text("Creating session worktree (may take a moment on large repos)...")
 
         # Create the session
-        sess_path = session_manager.create_session(
-            session_id=session_id,
-            owner=args.owner,
-            mode=args.mode,
-            install_deps=install_deps,
-            base_branch=getattr(args, "base_branch", None),
-            create_wt=create_wt,
-        )
+        prev_progress = os.environ.get("EDISON_SESSION_CREATE_PROGRESS")
+        os.environ["EDISON_SESSION_CREATE_PROGRESS"] = "1"
+        try:
+            sess_path = session_manager.create_session(
+                session_id=session_id,
+                owner=args.owner,
+                mode=args.mode,
+                install_deps=install_deps,
+                base_branch=getattr(args, "base_branch", None),
+                create_wt=create_wt,
+            )
+        finally:
+            if prev_progress is None:
+                os.environ.pop("EDISON_SESSION_CREATE_PROGRESS", None)
+            else:
+                os.environ["EDISON_SESSION_CREATE_PROGRESS"] = prev_progress
 
         # Load session data for output
         session = session_manager.get_session(session_id)

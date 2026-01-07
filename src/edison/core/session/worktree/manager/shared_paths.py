@@ -110,6 +110,9 @@ def ensure_shared_paths_in_checkout(
     updated = 0
     skipped_tracked = 0
 
+    shared_root_cache: Path | None = None
+    primary_root_cache: Path | None = None
+
     for item in parse_shared_paths(cfg):
         scopes = set(item.get("scopes") or [])
         if scope not in scopes:
@@ -131,9 +134,13 @@ def ensure_shared_paths_in_checkout(
         merge_existing = bool(item.get("mergeExisting", True))
         target_root = str(item.get("targetRoot") or "shared").strip().lower()
         if target_root == "primary":
-            shared_root = get_worktree_parent(repo_dir) or repo_dir
+            if primary_root_cache is None:
+                primary_root_cache = get_worktree_parent(repo_dir) or repo_dir
+            shared_root = primary_root_cache
         else:
-            shared_root = resolve_shared_root(repo_dir=repo_dir, cfg=cfg)
+            if shared_root_cache is None:
+                shared_root_cache = resolve_shared_root(repo_dir=repo_dir, cfg=cfg)
+            shared_root = shared_root_cache
 
         link = checkout_path / rel
         target = Path(shared_root) / rel
@@ -149,4 +156,3 @@ def ensure_shared_paths_in_checkout(
 
 
 __all__ = ["ensure_shared_paths_in_checkout"]
-
