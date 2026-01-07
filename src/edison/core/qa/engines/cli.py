@@ -349,16 +349,24 @@ class CLIEngine:
             inject worktree-aware flags without hardcoding per-validator logic.
             """
             formatted: list[str] = []
-            for p in parts:
+            worktree_s = str(worktree_path)
+            for raw in parts:
+                p = str(raw)
                 if "{" not in p:
                     formatted.append(p)
                     continue
-                try:
-                    formatted.append(
-                        p.format(worktree_path=str(worktree_path), worktree=str(worktree_path))
-                    )
-                except Exception:
-                    formatted.append(p)
+
+                # Prefer explicit token replacement over `str.format()`.
+                #
+                # Rationale:
+                # - Validators frequently want literal braces in prompts/flags.
+                # - Some configs may use escaped braces like `{{worktree_path}}` which
+                #   `str.format()` would interpret differently.
+                # - We only support a tiny token surface area here by design.
+                out = p
+                out = out.replace("{{worktree_path}}", worktree_s).replace("{{worktree}}", worktree_s)
+                out = out.replace("{worktree_path}", worktree_s).replace("{worktree}", worktree_s)
+                formatted.append(out)
             return formatted
 
         cmd: list[str] = [self.command]
