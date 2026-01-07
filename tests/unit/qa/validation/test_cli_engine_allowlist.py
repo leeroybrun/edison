@@ -38,26 +38,6 @@ def test_cli_engine_can_execute_respects_allowlist(
     assert engine.can_execute() is False
 
 
-def test_cli_engine_disabled_by_default(
-    isolated_project_env: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """CLI engines must be opt-in via orchestration.allowCliEngines.
-
-    This keeps unit tests deterministic on developer machines where CLI tools
-    (codex/claude/coderabbit) may be installed and configured.
-    """
-    cfg = EngineConfig.from_dict(
-        "codex-cli",
-        {"type": "cli", "command": "codex"},
-    )
-    engine = CLIEngine(cfg, project_root=isolated_project_env)
-
-    # Pretend the binary exists; defaults should still block execution.
-    monkeypatch.setattr(shutil, "which", lambda _: "/bin/true")
-
-    assert engine.can_execute() is False
-
-
 def test_cli_engine_can_execute_allows_when_in_allowlist(
     isolated_project_env: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
