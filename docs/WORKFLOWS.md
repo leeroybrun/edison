@@ -610,7 +610,7 @@ Detailed validation process with evidence collection and consensus.
 
 ```bash
 # Ensure a round exists (session tracking will also do this).
-edison evidence init <task-id>
+edison qa round <task-id> --new
 
 # Run only the required CI commands for the task's inferred preset and capture trusted evidence.
 edison evidence capture <task-id>

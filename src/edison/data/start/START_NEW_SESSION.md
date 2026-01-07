@@ -48,6 +48,6 @@ edison session create [--session-id <id>]  # Create a new session record (option
 edison session status        # Check session status
 edison task ready            # List ready tasks
 edison task claim <id>       # Claim a task
-edison evidence init <id>    # Initialize evidence round
+edison qa round <id> --new   # Initialize evidence round
 edison evidence status <id>  # Check evidence completeness
 ```
