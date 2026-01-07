@@ -1008,3 +1008,82 @@ def test_worktree_writes_session_id_file_for_auto_resolution(session_git_repo_pa
     session_id_file = wt_path / ".project" / ".session-id"
     assert session_id_file.exists()
     assert session_id_file.read_text(encoding="utf-8").strip() == sid
+
+
+def test_default_shared_paths_include_project_plans_with_commit_allowed(session_git_repo_path):
+    """Default sharedPaths should include .project/plans with commitAllowed: true.
+
+    Plans are Edison-managed artifacts that must remain consistent across session worktrees.
+    The meta commit guard should allow committing plan files.
+    """
+    from edison.core.config.domains.session import SessionConfig
+
+    cfg = SessionConfig(repo_root=session_git_repo_path).get_worktree_config()
+    ss = cfg.get("sharedState") or {}
+    shared_paths = ss.get("sharedPaths") or []
+
+    # Find the .project/plans entry
+    plans_entry = None
+    for entry in shared_paths:
+        if isinstance(entry, dict) and entry.get("path") == ".project/plans":
+            plans_entry = entry
+            break
+
+    assert plans_entry is not None, ".project/plans should be in default sharedPaths"
+    assert plans_entry.get("commitAllowed") is True, ".project/plans should have commitAllowed: true"
+    assert "primary" in (plans_entry.get("scopes") or []), ".project/plans should be scoped to primary"
+    assert "session" in (plans_entry.get("scopes") or []), ".project/plans should be scoped to session"
+
+
+def test_meta_commit_guard_allows_project_plans(session_git_repo_path):
+    """Meta commit guard should allow committing .project/plans files.
+
+    Plans are Edison-managed artifacts intended to be tracked on the meta branch.
+    """
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    status = worktree.ensure_meta_worktree()
+    meta_path = Path(status["meta_path"])
+    assert meta_path.exists()
+
+    hooks_path_cp = run_with_timeout(
+        ["git", "rev-parse", "--path-format=absolute", "--git-path", "hooks/pre-commit"],
+        cwd=meta_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    hook_path = Path((hooks_path_cp.stdout or "").strip())
+    if not hook_path.is_absolute():
+        hook_path = (meta_path / hook_path).resolve()
+    assert hook_path.exists()
+
+    hook_text = hook_path.read_text(encoding="utf-8")
+    assert "EDISON_META_COMMIT_GUARD" in hook_text
+    assert ".project/plans/" in hook_text
+
+
+def test_worktree_links_project_plans_to_meta(session_git_repo_path):
+    """Session worktrees should link .project/plans to the meta worktree.
+
+    Plans must be shared across all session worktrees to maintain consistency.
+    """
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    # Seed meta with plans directory
+    meta = worktree.ensure_meta_worktree()
+    shared_plans = Path(meta["meta_path"]) / ".project" / "plans"
+    shared_plans.mkdir(parents=True, exist_ok=True)
+    (shared_plans / "test-plan.md").write_text("# Test Plan\n", encoding="utf-8")
+
+    sid = "shared-plans"
+    wt_path, _ = worktree.create_worktree(sid, base_branch="main")
+    assert wt_path is not None
+
+    link = wt_path / ".project" / "plans"
+    assert link.exists()
+    assert link.is_symlink()
+    assert link.resolve() == shared_plans.resolve()
+    assert (link / "test-plan.md").exists()
