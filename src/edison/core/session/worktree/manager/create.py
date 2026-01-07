@@ -146,16 +146,34 @@ def create_worktree(
 
     start_ref = _resolve_start_ref(repo_dir, base_branch_value, timeout=t_branch)
 
+    def _normalize_fetch_mode(raw: object) -> str:
+        # Back-compat: treat booleans as explicit choices.
+        if isinstance(raw, bool):
+            return "always" if raw else "never"
+        mode = str(raw or "on_failure").strip().lower()
+        if mode in {"always", "never", "on_failure"}:
+            return mode
+        return "on_failure"
+
+    fetch_mode = _normalize_fetch_mode(config.get("fetchMode"))
+
+    def _fetch() -> None:
+        run_with_timeout(
+            ["git", "fetch", "--all", "--prune"],
+            cwd=repo_dir,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=t_fetch,
+        )
+
     for _attempt in range(2):
         try:
-            run_with_timeout(
-                ["git", "fetch", "--all", "--prune"],
-                cwd=repo_dir,
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=t_fetch,
-            )
+            # Common case: baseBranchMode=current points at a local ref, so a fetch
+            # is unnecessary and can hang when remotes are unreachable. Default to
+            # fetching only on failure unless explicitly configured.
+            if fetch_mode == "always" and _attempt == 0:
+                _fetch()
 
             branch_ref = f"refs/heads/{branch_name}"
             if _ref_exists(branch_ref):
@@ -177,7 +195,7 @@ def create_worktree(
                     timeout=t_add,
                 )
             break
-        except subprocess.CalledProcessError as e:
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
             last_err = e
             run_with_timeout(
                 ["git", "worktree", "prune"],
@@ -187,14 +205,8 @@ def create_worktree(
                 text=True,
                 timeout=config_obj.get_worktree_timeout("prune", 10),
             )
-            run_with_timeout(
-                ["git", "fetch", "--all", "--prune"],
-                cwd=repo_dir,
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=t_fetch,
-            )
+            if fetch_mode in {"always", "on_failure"}:
+                _fetch()
     if last_err is not None:
         raise RuntimeError(f"Failed to create worktree after retries: {last_err}")
 

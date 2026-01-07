@@ -565,6 +565,18 @@ properties:
         - string
         - 'null'
         default: null
+      fetchMode:
+        type: string
+        description: >
+          Controls whether Edison runs `git fetch --all --prune` during session worktree creation.
+          `on_failure` (default) avoids blocking on slow/unreachable remotes in the common local-branch case,
+          and only fetches when worktree creation needs a retry. Use `always` to force a fetch, or `never` to
+          disable fetching entirely.
+        enum:
+        - on_failure
+        - always
+        - never
+        default: on_failure
       baseDirectory:
         type: string
         description: Base directory for session worktrees.

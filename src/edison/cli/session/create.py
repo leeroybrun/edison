@@ -204,6 +204,9 @@ def main(args: argparse.Namespace) -> int:
         create_wt = not args.no_worktree
         install_deps = args.install_deps if args.install_deps else None
 
+        if create_wt and not formatter.json_mode:
+            formatter.text("Creating session worktree (may take a moment on large repos)...")
+
         # Create the session
         sess_path = session_manager.create_session(
             session_id=session_id,
