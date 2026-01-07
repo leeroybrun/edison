@@ -3,7 +3,7 @@
 
 orchestration:
   # Whether Edison may execute external CLI validator engines (codex/claude/gemini/etc).
-  allowCliEngines: false
+  allowCliEngines: true
 
   tracking:
     # Staleness threshold for "active" runs (seconds since lastActive heartbeat).
