@@ -136,7 +136,8 @@ Markdown files defining Edison commands:
   edison-session-next.md    - Get next actions
   edison-session-status.md  - Show session status
   edison-task-claim.md      - Claim a task
-  edison-task-ready.md      - Mark task ready
+  edison-task-ready.md      - List ready-to-claim tasks
+  edison-task-done.md       - Mark task done
 ```
 
 ### Configuration (`opencode.json`)
@@ -333,6 +334,7 @@ opencode:
     - edison-session-status
     - edison-task-claim
     - edison-task-ready
+    - edison-task-done
 
   pluginTemplate: "templates/opencode/plugin/edison.ts.template"
 
@@ -400,7 +402,8 @@ This agent specializes in...
 ## Commands
 
 - `edison task show <id>` - View task details
-- `edison task ready <id>` - Mark task ready
+- `edison task ready` - List ready-to-claim tasks
+- `edison task done <id>` - Mark task done
 ```
 
 Add to configuration:
@@ -445,6 +448,7 @@ opencode:
     - edison-session-status
     - edison-task-claim
     - edison-task-ready
+    - edison-task-done
     - my-custom-command  # Your custom command
 ```
 

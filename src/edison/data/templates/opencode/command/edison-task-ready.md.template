@@ -1,11 +1,15 @@
 ---
-description: Mark an Edison task as ready for QA
+description: List Edison tasks ready to be claimed
 agent: build
 ---
-Mark a task as done and ready for validation. Pass the task ID as an argument.
+List tasks that are unblocked and ready to be claimed.
 
 ```bash
-edison task ready $ARGUMENTS
+edison task ready
 ```
 
-Ensure all tests pass and evidence is captured before marking ready.
+Optional: filter to a session:
+
+```bash
+edison task ready --session <session-id>
+```

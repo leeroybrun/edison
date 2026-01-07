@@ -1,0 +1,11 @@
+---
+description: Mark an Edison task as done
+agent: build
+---
+Mark a task as **done** (completion). Pass the task ID as an argument.
+
+```bash
+edison task done $ARGUMENTS
+```
+
+Ensure evidence is captured and your implementation report is complete before marking a task done.

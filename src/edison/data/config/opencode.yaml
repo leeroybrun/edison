@@ -24,6 +24,7 @@ opencode:
     - edison-session-status
     - edison-task-claim
     - edison-task-ready
+    - edison-task-done
 
   # Plugin template (TypeScript)
   pluginTemplate: "templates/opencode/plugin/edison.ts.template"
