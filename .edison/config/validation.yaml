@@ -102,6 +102,8 @@ validation:
     # The global validator prompt is intentionally large (constitution + checklist + stack overlays).
     # 300s is frequently too low for remote model execution; avoid false negatives due to timeouts.
     global-claude:
+      # Only run Claude when included by the selected preset (avoid forcing it in coderabbit-only runs).
+      always_run: false
       timeout: 900
 
     global-coderabbit:
