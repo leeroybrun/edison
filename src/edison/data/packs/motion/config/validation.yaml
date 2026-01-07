@@ -9,11 +9,10 @@ validation:
       wave: comprehensive
       always_run: false
       blocking: false
-      timeout: 300
+      timeout: 1500
       context7_required: true
       context7_packages: ["+", "motion"]
       triggers:
         - "**/*.tsx"
         - "**/*.jsx"
       focus: []
-

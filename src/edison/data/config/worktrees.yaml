@@ -126,9 +126,13 @@ worktrees:
       primary:
         - ".project/"
         - ".edison/_generated/"
+        - ".edison/_locks/"
+        - ".edison/session/"
       session:
         - ".project/"
         - ".edison/_generated/"
+        - ".edison/_locks/"
+        - ".edison/session/"
       meta:
         - ".project/logs/"
         - ".project/archive/"
@@ -136,10 +140,11 @@ worktrees:
         - ".project/qa/locks/"
         - ".project/qa/evidence-snapshots/"
         - ".project/qa/score-history/"
-        # Mandatory migration: legacy location is read-only compat; ignore any new writes.
-        - ".project/qa/validation-evidence/"
         # Runtime-only session transactions.
         - ".project/sessions/_tx/"
+        # Edison lock files (runtime-only).
+        - ".edison/_locks/"
+        - ".edison/session/"
         - ".edison/_generated/"
         - ".edison/_generated.__tmp__*"
         # Ignore Codex runtime noise in meta, but keep prompts visible/trackable.

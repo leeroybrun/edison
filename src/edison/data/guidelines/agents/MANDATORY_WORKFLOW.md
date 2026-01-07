@@ -73,7 +73,7 @@ edison session track complete --task <task-id>
 
 Return a crisp handoff to the orchestrator:
 - What changed and why
-- Commands you ran and where the evidence files live
+- Commands you ran and the snapshot path from `edison evidence status <task-id>`
 - Where the implementation report lives
 - Any blockers or follow-ups (especially those that must block validation)
 

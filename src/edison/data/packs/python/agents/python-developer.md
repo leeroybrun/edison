@@ -254,9 +254,7 @@ Follow the implementation report requirements: run `edison read OUTPUT_FORMAT --
 - ruff check: 0 errors
 
 ### Evidence
-- {{fn:evidence_file("test")}}: test output
-- {{fn:evidence_file("type-check")}}: type-check output
-- {{fn:evidence_file("lint")}}: lint output
+- Command evidence is captured via `edison evidence capture <task-id>` and inspected via `edison evidence status <task-id>` (snapshot-based; reused when repo fingerprint is unchanged).
 ```
 
 ## Constraints

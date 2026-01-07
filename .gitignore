@@ -8,6 +8,8 @@ __pycache__/
 .ruff_cache/
 
 .edison/_generated/
+.edison/_locks/
+.edison/session/
 .project/sessions/
 .project/logs/
 .project/archive/

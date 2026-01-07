@@ -52,29 +52,9 @@ def main(args: argparse.Namespace) -> int:
 
         if getattr(args, "record_id", None):
             task_id = resolve_existing_task_id(project_root=project_root, raw_task_id=str(args.record_id))
-            r = evaluator.evaluate_task(task_id)
-            blocked = [b.to_dict() for b in r.blocked_by]
-            is_blocked = bool(blocked)
-            unmet = [
-                {
-                    "id": b.get("dependencyId"),
-                    "state": b.get("dependencyState"),
-                    "requiredStates": b.get("requiredStates", []),
-                    "reason": b.get("reason", ""),
-                }
-                for b in blocked
-            ]
-            payload = {
-                "id": r.task.id,
-                "title": r.task.title or "",
-                "state": r.task.state,
-                # `ready` means "ready to claim" (only meaningful for todo tasks).
-                "ready": r.ready,
-                # `blocked` is the dependency-blocked signal for this command.
-                "blocked": is_blocked,
-                "blockedBy": blocked,
-                "unmetDependencies": unmet,
-            }
+            r = evaluator.evaluate_task(task_id, session_id=session_id)
+            payload = r.to_blocked_detail_dict(todo_state=evaluator.todo_state())
+            is_blocked = bool(payload.get("blockedBy"))
             if formatter.json_mode:
                 formatter.json_output(payload)
             else:

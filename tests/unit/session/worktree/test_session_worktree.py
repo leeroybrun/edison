@@ -433,7 +433,11 @@ def test_worktree_config_deep_merges_shared_state_defaults(session_git_repo_path
 
     assert "gitExcludes" in ss
     assert "commitGuard" in ss
-    assert ss["gitExcludes"]["session"] == [".project/", ".edison/_generated/"]
+
+    # Do not pin the exact default exclude list (it is config-driven and may grow).
+    session_excludes = ss.get("gitExcludes", {}).get("session") or []
+    assert ".project/" in session_excludes
+    assert ".edison/_generated/" in session_excludes
 
 
 def test_create_worktree_applies_worktree_local_git_excludes(session_git_repo_path):

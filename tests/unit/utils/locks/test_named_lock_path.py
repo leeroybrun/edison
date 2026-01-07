@@ -23,3 +23,18 @@ def test_named_lock_path_repo_scope_uses_project_config_dir(
 
     assert p.resolve() == (isolated_project_env / ".edison" / "_locks" / "web_server" / "k1").resolve()
 
+
+def test_named_lock_path_session_scope_uses_project_session_locks_dir(
+    isolated_project_env: Path,
+) -> None:
+    p = named_lock_path(
+        repo_root=isolated_project_env,
+        namespace="web_server",
+        key="k1",
+        scope="session",
+        session_id="happy-pid-123",
+    )
+
+    assert p.resolve() == (
+        isolated_project_env / ".edison" / "session" / "happy-pid-123" / "_locks" / "web_server" / "k1"
+    ).resolve()

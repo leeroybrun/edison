@@ -115,8 +115,8 @@ git diff main...HEAD          # Committed changes on this branch/worktree
 
 ### 9. Regression Testing
 - ✅ ALL existing tests pass
-- ✅ Build succeeds
-- ✅ Type-check passes
+- ✅ Required automation evidence (preset-driven) passes
+- ✅ Do not block on optional evidence that is not required by the preset
 
 ### 10. Documentation
 - ✅ Complex logic explained
@@ -155,10 +155,10 @@ git diff main...HEAD          # Committed changes on this branch/worktree
 [List if any]
 
 ## Evidence
-- Type-Check: ✅ PASS | ❌ FAIL
-- Lint: ✅ PASS | ❌ FAIL
-- Tests: ✅ PASS | ❌ FAIL
-- Build: ✅ SUCCESS | ❌ FAIL
+- Evidence is **preset-driven**. Treat evidence as required only when the selected preset requires it.
+- Command evidence is **repo-state** and lives in fingerprinted snapshots under `.project/qa/evidence-snapshots/`.
+- Prefer `edison evidence status <task>` output (or the preflight checklist) to determine what is required/missing.
+- Do not ask implementers to manually create evidence files; evidence must come from `edison evidence capture`.
 
 ## Final Decision
 **Status**: [APPROVED/REJECTED]

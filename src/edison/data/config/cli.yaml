@@ -3,6 +3,10 @@
 # NOTE: JSON formatting settings are in json-io.yaml (not duplicated here)
 
 cli:
+  progress:
+    enabled: true
+    threshold_seconds: 8
+    interval_seconds: 15
   table:
     padding: 1
     column_gap: 2

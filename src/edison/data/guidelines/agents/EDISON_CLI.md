@@ -155,7 +155,8 @@ edison task status TASK-123 --json
 
 ## Output Locations
 
-**Implementation evidence**: `{{fn:evidence_root}}/<task-id>/round-N/{{config.validation.artifactPaths.implementationReportFile}}`
+**Implementation report (round artefact)**: `{{fn:evidence_root}}/<task-id>/round-N/{{config.validation.artifactPaths.implementationReportFile}}`
+**Command evidence snapshots**: inspect via `edison evidence status <task-id>`
 
 **Contents:**
 - Changes made

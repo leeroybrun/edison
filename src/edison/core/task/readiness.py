@@ -26,6 +26,8 @@ class BlockedByDependency:
     dependency_state: Optional[str]
     required_states: tuple[str, ...]
     reason: str
+    dependency_session_id: Optional[str] = None
+    dependency_path: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -33,6 +35,8 @@ class BlockedByDependency:
             "dependencyState": self.dependency_state,
             "requiredStates": list(self.required_states),
             "reason": self.reason,
+            "dependencySessionId": self.dependency_session_id,
+            "dependencyPath": self.dependency_path,
         }
 
 
@@ -70,6 +74,20 @@ class TaskReadiness:
             "unmetDependencies": unmet,
         }
 
+    def to_blocked_detail_dict(self, *, todo_state: str) -> dict[str, Any]:
+        """Return a detailed blocked/readiness payload for a single task."""
+        payload = self.to_blocked_list_dict()
+        payload.update(
+            {
+                # `ready` means "ready to claim" (only meaningful for todo tasks).
+                "ready": self.ready,
+                # `blocked` is the dependency-blocked signal (todo + unmet deps).
+                "blocked": bool(self.blocked_by),
+                "todoState": todo_state,
+            }
+        )
+        return payload
+
 
 class TaskReadinessEvaluator:
     """Compute readiness/blocked semantics from the task graph."""
@@ -104,18 +122,44 @@ class TaskReadinessEvaluator:
         val = cfg.get("treatMissingDependencyAsBlocked")
         return True if val is None else bool(val)
 
-    def _graph(self) -> TaskGraph:
-        return TaskIndex(project_root=self.project_root).get_task_graph(session_id=None)
+    def _full_graph(self) -> TaskGraph:
+        """Return full graph including all session tasks (for diagnostics)."""
+        return TaskIndex(project_root=self.project_root).get_task_graph(
+            session_id=None,
+            include_session_tasks=True,
+        )
 
-    def evaluate_task(self, task_id: str) -> TaskReadiness:
-        graph = self._graph()
-        task = graph.tasks.get(task_id)
+    def _scoped_graph(self, *, full: TaskGraph, session_id: Optional[str]) -> TaskGraph:
+        """Return a graph view scoped to global + (optional) one session.
+
+        Invariants:
+        - When session_id is None: ONLY global tasks participate.
+        - When session_id is set: global tasks + tasks in that session participate.
+        - Tasks from other sessions never satisfy dependencies.
+        """
+        if session_id is None:
+            tasks = {tid: t for tid, t in full.tasks.items() if t.session_id is None}
+        else:
+            sid = str(session_id)
+            tasks = {tid: t for tid, t in full.tasks.items() if t.session_id is None or t.session_id == sid}
+        return TaskGraph(tasks=tasks)
+
+    def evaluate_task(self, task_id: str, *, session_id: Optional[str] = None) -> TaskReadiness:
+        full = self._full_graph()
+        task = full.tasks.get(task_id)
         if task is None:
             raise ValueError(f"Task not found: {task_id}")
-        return self._evaluate_summary(task, graph)
+        scope_session_id = task.session_id if session_id is None else str(session_id)
+        scoped = self._scoped_graph(full=full, session_id=scope_session_id)
+        scoped_task = scoped.tasks.get(task_id)
+        if scoped_task is None:
+            # If task is session-scoped but missing session_id metadata, fall back to full.
+            scoped_task = task
+        return self._evaluate_summary(scoped_task, scoped, full)
 
     def list_ready_tasks(self, *, session_id: Optional[str] = None) -> list[TaskReadiness]:
-        graph = self._graph()
+        full = self._full_graph()
+        graph = self._scoped_graph(full=full, session_id=session_id)
         todo_state = self.todo_state()
         out: list[TaskReadiness] = []
         for t in graph.tasks.values():
@@ -123,14 +167,15 @@ class TaskReadinessEvaluator:
                 continue
             if session_id is not None and t.session_id != session_id:
                 continue
-            r = self._evaluate_summary(t, graph)
+            r = self._evaluate_summary(t, graph, full)
             if r.ready:
                 out.append(r)
         out.sort(key=lambda r: r.task.id)
         return out
 
     def list_blocked_tasks(self, *, session_id: Optional[str] = None) -> list[TaskReadiness]:
-        graph = self._graph()
+        full = self._full_graph()
+        graph = self._scoped_graph(full=full, session_id=session_id)
         todo_state = self.todo_state()
         out: list[TaskReadiness] = []
         for t in graph.tasks.values():
@@ -138,13 +183,13 @@ class TaskReadinessEvaluator:
                 continue
             if session_id is not None and t.session_id != session_id:
                 continue
-            r = self._evaluate_summary(t, graph)
+            r = self._evaluate_summary(t, graph, full)
             if not r.ready and r.blocked_by:
                 out.append(r)
         out.sort(key=lambda r: r.task.id)
         return out
 
-    def _evaluate_summary(self, task: TaskSummary, graph: TaskGraph) -> TaskReadiness:
+    def _evaluate_summary(self, task: TaskSummary, graph: TaskGraph, full: TaskGraph) -> TaskReadiness:
         todo_state = self.todo_state()
         if task.state != todo_state:
             return TaskReadiness(task=task, ready=False, blocked_by=())
@@ -157,6 +202,19 @@ class TaskReadinessEvaluator:
             dep = graph.tasks.get(dep_id_str)
             if dep is None:
                 if self.treat_missing_dependency_as_blocked():
+                    found_any = full.tasks.get(dep_id_str)
+                    if found_any is not None and found_any.session_id is not None:
+                        blocked.append(
+                            BlockedByDependency(
+                                dependency_id=dep_id_str,
+                                dependency_state=found_any.state,
+                                required_states=satisfied_states,
+                                reason=f"dependency exists in another session ({found_any.session_id})",
+                                dependency_session_id=found_any.session_id,
+                                dependency_path=str(found_any.path),
+                            )
+                        )
+                        continue
                     blocked.append(
                         BlockedByDependency(
                             dependency_id=dep_id_str,
@@ -174,6 +232,8 @@ class TaskReadinessEvaluator:
                         dependency_state=dep.state,
                         required_states=satisfied_states,
                         reason="dependency not in a satisfied state",
+                        dependency_session_id=dep.session_id,
+                        dependency_path=str(dep.path),
                     )
                 )
 

@@ -23,24 +23,12 @@ You are an **independent Python code reviewer** validating work completed by imp
 
 ### Step 1: Gather Evidence
 
-Run validation commands and collect output:
+Command evidence is captured by the orchestrator (or a trusted runner) via `edison evidence capture` into **repo-state snapshots** keyed by a git fingerprint.
 
-```bash
-# Type checking (MANDATORY)
-{{fn:ci_command("type-check")}} > {{fn:evidence_file("type-check")}} 2>&1
-echo "Exit code: $?" >> {{fn:evidence_file("type-check")}}
-
-# Linting (MANDATORY)
-{{fn:ci_command("lint")}} > {{fn:evidence_file("lint")}} 2>&1
-echo "Exit code: $?" >> {{fn:evidence_file("lint")}}
-
-# Testing (MANDATORY)
-{{fn:ci_command("test")}} > {{fn:evidence_file("test")}} 2>&1
-echo "Exit code: $?" >> {{fn:evidence_file("test")}}
-
-# Build check (if applicable)
-{{fn:ci_command("build")}} > {{fn:evidence_file("build")}} 2>&1 || echo "No build configured"
-```
+- Evidence requirements are **preset-driven**. Do not assume lint/build/type-check are required unless the preset requires them.
+- Prefer **reviewing existing evidence outputs** over re-running commands.
+- If required evidence is missing/stale, **reject** and ask for `edison evidence capture <task>` (avoid `--only` unless targeting missing commands).
+- Use `edison evidence status <task>` (or the QA preflight checklist output) to see which command evidence files are required for the current preset and where they live.
 
 ### Step 2: Review Git Diff
 
@@ -66,7 +54,7 @@ git diff           # Unstaged changes
 - `from __future__ import annotations` used for forward refs
 - mypy --strict passes with 0 errors
 
-**Evidence Required**: `{{fn:evidence_file("type-check")}}`
+**Evidence**: When required by the preset, type-check evidence must pass.
 
 **Output**:
 ```
@@ -89,7 +77,7 @@ FAIL: mypy --strict: [N] errors
 - Edge cases covered via parametrize
 - Fixtures use real files/data (tmp_path, etc.)
 
-**Evidence Required**: `{{fn:evidence_file("test")}}`
+**Evidence**: When required by the preset, test evidence must pass.
 
 **Output**:
 ```
@@ -114,7 +102,7 @@ FAIL: Mock usage detected (violates NO MOCKS rule)
 - Docstrings on public APIs
 - Consistent naming conventions (snake_case)
 
-**Evidence Required**: `{{fn:evidence_file("lint")}}`
+**Evidence**: When required by the preset, lint evidence must pass.
 
 **Output**:
 ```

@@ -14,6 +14,7 @@ from edison.cli import (
     add_json_flag,
     add_repo_root_flag,
     get_repo_root,
+    resolve_existing_task_id,
     resolve_session_id,
 )
 
@@ -55,8 +56,17 @@ def main(args: argparse.Namespace) -> int:
             explicit=getattr(args, "session", None),
             required=False,
         )
+        raw_task_id = str(args.task_id)
+        try:
+            args.task_id = resolve_existing_task_id(project_root=repo_root, raw_task_id=raw_task_id)
+        except Exception:
+            args.task_id = raw_task_id
+        if str(args.task_id) != raw_task_id and not formatter.json_mode:
+            print(f"Resolved task id '{raw_task_id}' -> '{args.task_id}'", file=sys.stderr)
+
         from edison.core.qa.bundler import build_validation_manifest
         from edison.core.qa.evidence import EvidenceService, rounds
+        from edison.core.qa.workflow.next_steps import build_bundle_next_steps_payload, format_bundle_next_steps_text
         from edison.core.utils.time import utc_timestamp
 
         manifest = build_validation_manifest(
@@ -72,6 +82,7 @@ def main(args: argparse.Namespace) -> int:
         ev = EvidenceService(root_task, project_root=repo_root)
         round_dir = ev.ensure_round()
         round_num = rounds.get_round_number(round_dir)
+        validation_summary_path = round_dir / ev.bundle_filename
 
         # Persist a draft bundle summary with per-task approvals defaulting to false.
         bundle_data = {
@@ -87,12 +98,30 @@ def main(args: argparse.Namespace) -> int:
         }
         ev.write_bundle(bundle_data, round_num=round_num)
 
-        formatter.json_output(manifest) if formatter.json_mode else formatter.text(
-            f"Bundle manifest for {args.task_id}"
-            + (f" (session {session_id})" if session_id else "")
-            + "\n"
-            f"  Tasks: {len(manifest.get('tasks', []) or [])}"
-        )
+        guidance = build_bundle_next_steps_payload(manifest=manifest, project_root=repo_root)
+
+        if formatter.json_mode:
+            out = dict(manifest)
+            out.update(
+                {
+                    "round": round_num,
+                    "validationSummary": str(validation_summary_path.relative_to(repo_root)),
+                    "nextSteps": guidance.get("nextSteps") or [],
+                    "bundleReports": guidance.get("bundleReports") or {},
+                }
+            )
+            formatter.json_output(out)
+        else:
+            formatter.text(
+                f"Bundle manifest for {args.task_id}"
+                + (f" (session {session_id})" if session_id else "")
+                + "\n"
+                f"  Root: {root_task} (scope={scope_used})\n"
+                f"  Tasks: {len(manifest.get('tasks', []) or [])}\n"
+                f"  Validation summary: {validation_summary_path.relative_to(repo_root)}"
+            )
+            formatter.text("")
+            formatter.text(format_bundle_next_steps_text(guidance))
 
         return 0
 

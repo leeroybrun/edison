@@ -36,7 +36,8 @@ def dependencies_satisfied(ctx: Mapping[str, Any]) -> bool:
 
         project_root = ctx.get("project_root") or PathResolver.resolve_project_root()
         evaluator = TaskReadinessEvaluator(project_root=project_root)
-        return bool(evaluator.evaluate_task(str(task_id)).ready)
+        scope_session_id = ctx.get("session_id")
+        return bool(evaluator.evaluate_task(str(task_id), session_id=str(scope_session_id) if scope_session_id else None).ready)
     except Exception:
         # FAIL-CLOSED for claim workflows: if we cannot evaluate dependencies, treat as blocked.
         return False

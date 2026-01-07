@@ -7,11 +7,14 @@ These helpers centralize common patterns used across Edison:
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any, Dict
 
 from edison.core.utils.io import iter_yaml_files, read_yaml
 from edison.core.utils.merge import deep_merge
+
+logger = logging.getLogger(__name__)
 
 
 def merge_yaml_directory(base: Dict[str, Any], directory: Path) -> Dict[str, Any]:
@@ -23,6 +26,21 @@ def merge_yaml_directory(base: Dict[str, Any], directory: Path) -> Dict[str, Any
     d = Path(directory)
     if not d.exists():
         return base
+
+    # Hygiene: when both <name>.yml and <name>.yaml exist, Edison prefers .yaml
+    # and ignores the .yml file. This can surprise operators; surface it loudly.
+    try:
+        yml_stems = {p.stem for p in d.glob("*.yml")}
+        yaml_stems = {p.stem for p in d.glob("*.yaml")}
+        shadowed = sorted(yml_stems & yaml_stems)
+        if shadowed:
+            logger.warning(
+                "Config hygiene: both .yml and .yaml exist for %s in %s; .yml is ignored (prefer consolidating to .yaml).",
+                ", ".join(shadowed),
+                str(d),
+            )
+    except Exception:
+        pass
 
     cfg: Dict[str, Any] = dict(base)
     for path in iter_yaml_files(d):
@@ -57,4 +75,3 @@ __all__ = [
     "merge_yaml_directory",
     "merge_named_yaml",
 ]
-

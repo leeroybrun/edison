@@ -111,6 +111,22 @@ def test_cleanup_stale_locks_json(tmp_path: Path, monkeypatch):
     assert not lock.exists()
 
 
+def test_cleanup_stale_locks_includes_project_config_locks(tmp_path: Path, monkeypatch):
+    root = make_project_root(tmp_path)
+    lock = root / ".edison" / "_locks" / "qa" / "stale"
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    lock.write_text("pid=999999")
+    old = 0
+    os.utime(lock, (old, old))
+
+    env = os.environ.copy()
+    env["AGENTS_PROJECT_ROOT"] = str(root)
+    proc = run("task", "cleanup_stale_locks", ["--max-age", "0", "--json"], env)
+    payload = json.loads(proc.stdout.strip())
+    assert payload["removed"] == 1
+    assert not lock.exists()
+
+
 def test_qa_new_creates_file(tmp_path: Path):
     root = make_project_root(tmp_path)
     template = root / ".project" / "qa" / "TEMPLATE.md"
@@ -238,9 +254,11 @@ round: 1
 
     assert excinfo.value.returncode == 1
     out = excinfo.value.stdout
-    assert "ORCHESTRATOR ACTION REQUIRED" in out
-    assert "disabled by config" in out
-    assert "allowCliEngines" in out
+    # CLI engines are disabled in the default config for isolated tests; ensure the
+    # CLI explains what is blocked and where to inspect configuration.
+    assert "Delegation-only blocking validators" in out
+    assert "reason=disabled_by_config" in out
+    assert "edison config show orchestration" in out
 
 
 def test_qa_validate_enforces_session_worktree_for_execution(tmp_path: Path) -> None:

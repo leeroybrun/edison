@@ -129,7 +129,7 @@ Improve code quality while keeping tests passing.
 - RED failure documented → GREEN pass documented → REFACTOR documented
 - Attach test output showing the failing run and the passing run
 - Include a coverage report for the round
-- Store evidence in the task round evidence directory using the **config-driven filenames** (e.g. `{{fn:evidence_file("test")}}`, `coverage-*.txt` when configured)
+- Collect command evidence via `edison evidence capture <task-id>` (stores into the fingerprinted snapshot store and reuses snapshots when the repo state fingerprint is unchanged). Do **not** redirect command output into “evidence files” manually.
 - If TDD must be skipped, record the rationale in the implementation report + QA brief and create a follow-up task to add the missing tests; do not silently skip
 
 ### What NOT To Do
@@ -276,6 +276,5 @@ Return:
 `)
 ```
 <!-- /section: orchestrator-verify -->
-
 
 

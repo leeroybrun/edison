@@ -67,14 +67,40 @@ def main(args: argparse.Namespace) -> int:
             "count": len(members),
         }
         if formatter.json_mode:
+            # Include bundle guidance (shared with `edison qa bundle`) so agents
+            # learn the expected workflow at the moment they create the bundle.
+            from edison.core.qa.bundler import build_validation_manifest
+            from edison.core.qa.workflow.next_steps import build_bundle_next_steps_payload
+
+            manifest = build_validation_manifest(
+                str(selection.root_task_id),
+                scope="bundle",
+                project_root=project_root,
+                session_id=None,
+            )
+            guidance = build_bundle_next_steps_payload(manifest=manifest, project_root=project_root)
+            payload.update(
+                {
+                    "nextSteps": guidance.get("nextSteps") or [],
+                    "bundleReports": guidance.get("bundleReports") or {},
+                }
+            )
             formatter.json_output(payload)
         else:
+            from edison.core.qa.bundler import build_validation_manifest
+            from edison.core.qa.workflow.next_steps import build_bundle_next_steps_payload, format_bundle_next_steps_text
+
+            manifest = build_validation_manifest(
+                str(selection.root_task_id),
+                scope="bundle",
+                project_root=project_root,
+                session_id=None,
+            )
+            guidance = build_bundle_next_steps_payload(manifest=manifest, project_root=project_root)
             formatter.text(
                 f"Bundle root: {selection.root_task_id}\n"
                 f"Members ({len(members)}): " + (", ".join(members) if members else "(none)") + "\n\n"
-                "Next:\n"
-                f"  - edison qa bundle {selection.root_task_id} --scope bundle\n"
-                f"  - edison qa validate {selection.root_task_id} --scope bundle --execute\n"
+                + format_bundle_next_steps_text(guidance)
             )
         return 0
     except Exception as exc:

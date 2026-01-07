@@ -13,6 +13,7 @@ from pathlib import Path
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 from edison.core.config.domains import TaskConfig
 from edison.core.utils.io.stale_locks import cleanup_stale_locks
+from edison.core.utils.locks.discovery import discover_project_lock_files
 
 SUMMARY = "Remove stale task locks"
 
@@ -49,8 +50,12 @@ def main(args: argparse.Namespace) -> int:
         config = TaskConfig(repo_root=project_root)
         task_root = config.tasks_root()
 
-        # Find all lock files in task directories
-        lock_files = list(task_root.rglob("*.lock")) if task_root.exists() else []
+        lock_files: list[Path] = []
+        # Legacy: lock files under the task tree (e.g., `.project/tasks/_locks/*.lock`).
+        lock_files.extend(list(task_root.rglob("*.lock")) if task_root.exists() else [])
+        # Edison-managed locks under `.edison/_locks/**`.
+        lock_files.extend(discover_project_lock_files(repo_root=project_root))
+        lock_files = sorted(set(lock_files), key=lambda p: str(p))
 
         stale, removed = cleanup_stale_locks(
             lock_files,

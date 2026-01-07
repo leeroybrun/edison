@@ -11,7 +11,8 @@ overlay_type: extend
 ### Linting: ansible-lint (BLOCKING when Ansible changes exist)
 
 ```bash
-{{fn:ci_command("lint")}} > {{fn:evidence_file("lint")}} 2>&1
+edison evidence status <task-id> --preset <preset>
+edison evidence capture <task-id> --preset <preset>
 ```
 
 **Validation Points:**
@@ -22,7 +23,8 @@ overlay_type: extend
 ### Optional: YAML lint
 
 ```bash
-{{fn:ci_command("yaml-lint")}} > {{fn:evidence_file("yaml-lint")}} 2>&1 || true
+edison evidence status <task-id> --preset <preset>
+edison evidence capture <task-id> --preset <preset>
 ```
 
 <!-- /extend -->
@@ -44,4 +46,3 @@ overlay_type: extend
 - Templates validated (`validate:`) where possible.
 
 <!-- /section: AnsibleChecks -->
-

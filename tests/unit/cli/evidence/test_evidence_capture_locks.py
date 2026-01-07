@@ -68,6 +68,78 @@ def test_evidence_capture_json_includes_lock_fields(
 
 
 @pytest.mark.qa
+def test_evidence_capture_only_warns_when_preset_requires_more_commands(
+    isolated_project_env: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(isolated_project_env)
+
+    # Two CI commands, and preset requires both evidence files.
+    py = sys.executable.replace("\\", "\\\\")
+    (isolated_project_env / ".edison" / "config" / "ci.yaml").write_text(
+        "\n".join(
+            [
+                "ci:",
+                "  commands:",
+                f"    test: \"{py} -c \\\"print('ok')\\\"\"",
+                f"    lint: \"{py} -c \\\"print('lint ok')\\\"\"",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (isolated_project_env / ".edison" / "config" / "validation.yaml").write_text(
+        "\n".join(
+            [
+                "validation:",
+                "  defaultPreset: standard",
+                "  presets:",
+                "    standard:",
+                "      name: standard",
+                "      validators: []",
+                "      blocking_validators: []",
+                "      required_evidence:",
+                "        - command-test.txt",
+                "        - command-lint.txt",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    from edison.core.qa.evidence import EvidenceService
+    from edison.core.task.workflow import TaskQAWorkflow
+
+    task_id = "212-wave1-evidence-capture-only-warn"
+    TaskQAWorkflow(isolated_project_env).create_task(task_id=task_id, title="Test", create_qa=False)
+    EvidenceService(task_id=task_id, project_root=isolated_project_env).ensure_round(1)
+
+    from edison.cli.evidence.capture import main as capture_main
+
+    rc = capture_main(
+        argparse.Namespace(
+            task_id=task_id,
+            only=["test"],
+            all=False,
+            preset=None,
+            session_close=False,
+            command_name=None,
+            continue_on_failure=False,
+            force=True,
+            no_lock=True,
+            json=True,
+            repo_root=str(isolated_project_env),
+        )
+    )
+    assert rc == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    status = payload.get("presetEvidenceStatus") or {}
+    assert "command-lint.txt" in (status.get("missing") or [])
+
+
+@pytest.mark.qa
 def test_evidence_capture_resolves_short_task_id(
     isolated_project_env: Path,
     capsys: pytest.CaptureFixture[str],
@@ -148,7 +220,7 @@ def test_evidence_capture_lock_waits_for_existing_lock(
         elapsed = time.monotonic() - start
         # The second acquire should have waited for the holder to release.
         assert elapsed >= (SHORT_SLEEP * 4)
-        assert str(info["lockPath"]).endswith(".project/qa/locks/evidence-capture-test.lock")
+        assert str(info["lockPath"]).endswith(".edison/_locks/evidence_capture/test")
 
     t.join(timeout=THREAD_JOIN_TIMEOUT)
     assert not t.is_alive()

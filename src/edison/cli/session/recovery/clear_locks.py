@@ -12,6 +12,7 @@ from pathlib import Path
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 from edison.core.utils.io.stale_locks import cleanup_stale_locks
+from edison.core.utils.locks.discovery import discover_project_lock_files
 
 SUMMARY = "Clear stale locks"
 
@@ -58,7 +59,12 @@ def main(args: argparse.Namespace) -> int:
         from edison.core.utils.paths import get_management_paths
 
         management_root = get_management_paths(Path(repo_root)).get_management_root()
-        lock_files = list(management_root.rglob("*.lock")) if management_root.exists() else []
+        lock_files: list[Path] = []
+        # Legacy: any leftover sidecar locks inside management (.project).
+        lock_files.extend(list(management_root.rglob("*.lock")) if management_root.exists() else [])
+        # Edison-managed locks inside `.edison/_locks/**`.
+        lock_files.extend(discover_project_lock_files(repo_root=Path(repo_root)))
+        lock_files = sorted(set(lock_files), key=lambda p: str(p))
 
         # Safe default: dry-run unless explicitly forced.
         dry_run = bool(args.dry_run) or not bool(args.force)

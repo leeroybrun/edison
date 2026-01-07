@@ -232,6 +232,21 @@ def main(args: argparse.Namespace) -> int:
 
         # Execute mode: use centralized executor
         if args.execute and not args.dry_run:
+            if bool(preflight_checklist.get("hasBlockers", False)):
+                if formatter.json_mode:
+                    formatter.error(
+                        RuntimeError("Preflight blockers detected. Resolve blockers before executing validators."),
+                        error_code="preflight_blocked",
+                        data={"checklist": preflight_checklist},
+                    )
+                else:
+                    formatter.error(
+                        RuntimeError("Preflight blockers detected. Resolve blockers before executing validators."),
+                        error_code="preflight_blocked",
+                    )
+                    _display_preflight_checklist(formatter=formatter, checklist=preflight_checklist)
+                return 1
+
             validators_override: list[str] | None = None
             if not getattr(args, "validators", None) and len(cluster_task_ids) > 1:
                 # Union the execution roster across the cluster so we run validators once at the
@@ -271,6 +286,13 @@ def main(args: argparse.Namespace) -> int:
             )
 
         # Dry-run or roster-only mode
+        from edison.core.qa.workflow.next_steps import build_validate_next_steps_from_checklist, format_steps_text
+
+        next_steps = build_validate_next_steps_from_checklist(
+            root_task_id=root_task_id,
+            scope=scope_used,
+            checklist=preflight_checklist,
+        )
         results = {
             "task_id": args.task_id,
             "session_id": session_id,
@@ -282,6 +304,7 @@ def main(args: argparse.Namespace) -> int:
             "execute_available": any(
                 executor.can_execute_validator(v["id"]) for v in validators_to_run
             ),
+            "nextSteps": next_steps,
         }
 
         if args.dry_run:
@@ -310,6 +333,8 @@ def main(args: argparse.Namespace) -> int:
                 executor=executor,
                 validator_registry=validator_registry,
             )
+            formatter.text("")
+            formatter.text(format_steps_text(next_steps))
 
         return 0
 

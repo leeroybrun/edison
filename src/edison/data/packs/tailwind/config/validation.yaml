@@ -9,7 +9,7 @@ validation:
       wave: comprehensive
       always_run: false
       blocking: false
-      timeout: 300
+      timeout: 1500
       context7_required: true
       context7_packages: ["+", "tailwindcss"]
       triggers:
@@ -17,4 +17,3 @@ validation:
         - "**/*.tsx"
         - "**/*.jsx"
       focus: []
-

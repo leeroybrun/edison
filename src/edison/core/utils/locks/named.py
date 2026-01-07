@@ -18,7 +18,7 @@ from edison.core.utils.io import ensure_directory
 from edison.core.utils.paths import get_project_config_dir, get_user_config_dir
 
 LockEnabled = bool | Literal["auto"]
-LockScope = Literal["global", "repo"]
+LockScope = Literal["global", "repo", "session"]
 
 
 @dataclass(frozen=True)
@@ -87,6 +87,8 @@ def parse_named_lock_config(raw: Any) -> NamedLockConfig:
             scope = "global"
         elif normalized in {"repo", "project"}:
             scope = "repo"
+        elif normalized in {"session", "worktree"}:
+            scope = "session"
 
     return NamedLockConfig(enabled=enabled, key=key, timeout_seconds=timeout_seconds, scope=scope)
 
@@ -97,14 +99,21 @@ def named_lock_path(
     namespace: str,
     key: str,
     scope: LockScope,
+    session_id: str | None = None,
 ) -> Path:
     ns = sanitize_lock_key(namespace)
     safe_key = sanitize_lock_key(key)
 
     if scope == "global":
         cfg_root = get_user_config_dir(create=True)
-    else:
+    elif scope == "repo":
         cfg_root = get_project_config_dir(Path(repo_root).expanduser().resolve(), create=True)
+    else:
+        base = get_project_config_dir(Path(repo_root).expanduser().resolve(), create=True)
+        if not session_id:
+            cfg_root = base
+        else:
+            cfg_root = base / "session" / sanitize_lock_key(session_id)
 
     lock_dir = cfg_root / "_locks" / ns
     ensure_directory(lock_dir)
@@ -120,4 +129,3 @@ __all__ = [
     "resolve_lock_enabled",
     "sanitize_lock_key",
 ]
-

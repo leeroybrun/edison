@@ -8,7 +8,7 @@ import pytest
 
 
 @pytest.mark.qa
-def test_evidence_init_resolves_short_task_id(
+def test_qa_round_prepare_resolves_short_task_id(
     isolated_project_env: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch,
@@ -18,22 +18,26 @@ def test_evidence_init_resolves_short_task_id(
     from edison.core.task.workflow import TaskQAWorkflow
 
     full_id = "011-task-relationships-mutators"
-    TaskQAWorkflow(isolated_project_env).create_task(task_id=full_id, title="Test", create_qa=False)
+    TaskQAWorkflow(isolated_project_env).create_task(task_id=full_id, title="Test", create_qa=True)
 
-    from edison.cli.evidence.init import main as init_main
+    from edison.cli.qa.round.prepare import main as prepare_main
 
-    rc = init_main(
+    rc = prepare_main(
         argparse.Namespace(
             task_id="011",
+            scope=None,
+            session=None,
+            status="pending",
+            note=None,
             json=True,
             repo_root=str(isolated_project_env),
         )
     )
-    assert rc == 1
+    assert rc == 0
 
     payload = json.loads(capsys.readouterr().out)
-    assert payload.get("taskId") == full_id
-    assert payload.get("deprecated") is True
+    # The command echoes the raw task_id in the envelope, but should resolve the rootTask.
+    assert payload.get("rootTask") == full_id
 
 
 @pytest.mark.qa

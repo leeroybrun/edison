@@ -9,11 +9,10 @@ validation:
       wave: comprehensive
       always_run: false
       blocking: true
-      timeout: 300
+      timeout: 1500
       context7_required: true
       context7_packages: ["+", "vitest"]
       triggers:
         - "**/*.test.*"
         - "**/*.spec.*"
       focus: []
-

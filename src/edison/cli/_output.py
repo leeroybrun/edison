@@ -49,6 +49,7 @@ class OutputFormatter:
         message: Optional[str] = None,
         *,
         error_code: str = "error",
+        data: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Output error result.
 
@@ -64,6 +65,12 @@ class OutputFormatter:
                 "code": error_code,
                 "message": msg,
             }
+            if data:
+                # Reserved keys: do not allow callers to override the core envelope.
+                for key, value in data.items():
+                    if key in {"error", "code", "message"}:
+                        continue
+                    output[key] = value
             # In JSON mode, all machine-readable payloads go to stdout (including errors).
             print(json.dumps(output, indent=self.indent), file=sys.stdout)
         else:

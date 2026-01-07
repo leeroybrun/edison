@@ -527,8 +527,9 @@ edison session next sess-001
 **Session records**: `{{fn:session_state_dir("active")}}/<session-id>/session.json`
 **Task files**: `{{fn:session_state_dir("active")}}/<session-id>/tasks/<task-state>/`
 **QA briefs**: `{{fn:session_state_dir("active")}}/<session-id>/qa/<qa-state>/`
-**Validation evidence**: `{{fn:evidence_root}}/<task-id>/round-N/`
+**Validation round artefacts (reports)**: `{{fn:evidence_root}}/<task-id>/round-N/`
 **Bundle summaries**: `{{fn:evidence_root}}/<task-id>/round-N/{{config.validation.artifactPaths.bundleSummaryFile}}`
+**Command evidence snapshots**: `.project/qa/evidence-snapshots/<git-head>/<fingerprint>/{clean|dirty}/command-*.txt`
 
 ---
 

@@ -74,6 +74,7 @@ def test_qa_validate_execute_bundle_scope_runs_union_of_cluster_validators(
             session=None,
             round=1,
             wave="bundle_test",
+            preset="quick",
             validators=None,
             add_validators=None,
             blocking_only=False,

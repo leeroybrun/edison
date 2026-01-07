@@ -116,10 +116,9 @@ Every validator MUST perform these universal checks:
 **Goal**: No breaking changes to existing functionality
 
 **Check**:
-- ✅ ALL existing tests still pass (run test suite)
+- ✅ Required automation evidence (preset-driven) passes
 - ✅ No tests skipped/disabled without documented reason
-- ✅ Build succeeds
-- ✅ Type-check passes
+- ✅ Do not block on optional evidence that is not required by the preset
 - ✅ No unintended deletions
 
 **Git Diff Analysis**:
@@ -128,9 +127,7 @@ Every validator MUST perform these universal checks:
 - ✅ Deletions are intentional and documented
 
 **Fail if**:
-- Any existing test fails
-- Build fails
-- Type-check fails
+- Required evidence fails (per preset/preflight)
 - Code deleted without documentation/justification
 
 ---
@@ -221,7 +218,7 @@ Every validator MUST perform these universal checks:
 
 - Validate only against bundles emitted by `edison qa bundle <root-task>`; return `BLOCKED` if the manifest or parent `{{config.validation.artifactPaths.bundleSummaryFile}}` is missing.
 - Load roster, triggers, and blocking flags via ConfigManager overlays (roster: `edison read AVAILABLE_VALIDATORS`) instead of JSON.
-- `edison qa promote` enforces state machine rules plus bundle presence; ensure Markdown + JSON reports live in the round evidence directory referenced by the bundle.
+- `edison qa promote` enforces state machine rules plus bundle presence; ensure validator reports + `{{config.validation.artifactPaths.bundleSummaryFile}}` live in the round directory referenced by the bundle, and that command evidence is captured in the snapshot store (inspect via `edison evidence status <task-id>`).
 - Honor Context7 requirements: auto-detected post-training packages must have markers (HMAC when enabled) before issuing approval.
 
 ---

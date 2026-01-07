@@ -43,7 +43,8 @@ edison qa validate TASK-123 --scope hierarchy
 edison qa validate TASK-123 --scope bundle
 ```
 
-**Input location**: `{{fn:evidence_root}}/<task-id>/round-N/`
+**Round artefacts location**: `{{fn:evidence_root}}/<task-id>/round-N/` (validator reports + `{{config.validation.artifactPaths.bundleSummaryFile}}`)
+**Command evidence snapshots**: `.project/qa/evidence-snapshots/<git-head>/<fingerprint>/{clean|dirty}/command-*.txt` (inspect via `edison evidence status`)
 **Output**: `{{config.validation.artifactPaths.bundleSummaryFile}}` or validation error report
 
 ---
@@ -70,7 +71,7 @@ edison qa status --json
 edison qa bundle <task-id> [--scope <auto|hierarchy|bundle>]
 ```
 
-**Purpose**: Inspect evidence paths and cluster tasks before validation
+**Purpose**: Inspect cluster tasks before validation (scope/cluster manifest)
 **When to use**: Before running validation, to understand scope
 
 **Example:**

@@ -656,14 +656,14 @@ def clear_session_locks(session_id: str) -> List[str]:
         logger.warning("Failed to resolve project root: %s", e)
         return []
 
-    from edison.core.utils.paths import get_management_paths
-    lock_dir = get_management_paths(root).get_management_root() / "locks"
-    if not lock_dir.exists():
-        return []
+    from edison.core.utils.locks.discovery import discover_project_lock_files
 
-    cleared = []
-    # Look for session-specific lock files
-    for lock_file in lock_dir.glob(f"{sid}*.lock"):
+    cleared: list[str] = []
+    lock_files = discover_project_lock_files(repo_root=root)
+    for lock_file in lock_files:
+        # Best-effort: remove only session-scoped lock paths.
+        if f"/session/{sid}/" not in str(lock_file).replace("\\", "/"):
+            continue
         try:
             lock_file.unlink()
             cleared.append(lock_file.name)
@@ -692,16 +692,13 @@ def clear_all_locks(force: bool = False, stale_threshold_hours: float = 1.0) -> 
         logger.warning("Failed to resolve project root: %s", e)
         return []
 
-    from edison.core.utils.paths import get_management_paths
-    lock_dir = get_management_paths(root).get_management_root() / "locks"
-    if not lock_dir.exists():
-        return []
+    from edison.core.utils.locks.discovery import discover_project_lock_files
 
-    cleared = []
+    cleared: list[str] = []
     stale_threshold_seconds = stale_threshold_hours * 3600
     current_time = time.time()
-    
-    for lock_file in lock_dir.glob("*.lock"):
+
+    for lock_file in discover_project_lock_files(repo_root=root):
         try:
             if force:
                 lock_file.unlink()

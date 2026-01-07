@@ -9,7 +9,7 @@ validation:
       wave: comprehensive
       always_run: false
       blocking: false
-      timeout: 300
+      timeout: 1500
       context7_required: true
       context7_packages: ["+", "next", "react"]
       triggers: ["app/**/*", "**/route.ts", "**/layout.tsx", "**/page.tsx", "**/middleware.ts"]
@@ -23,9 +23,8 @@ validation:
       wave: comprehensive
       always_run: false
       blocking: false
-      timeout: 300
+      timeout: 1500
       context7_required: true
       context7_packages: ["+", "next"]
       triggers: ["**/route.ts", "app/api/**/*"]
       focus: []
-

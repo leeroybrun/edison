@@ -38,7 +38,7 @@ class ValidatorMetadata:
     always_run: bool = False
     fallback_engine: str = ""
     prompt: str = ""
-    timeout: int = 300
+    timeout: int = 1500
     context7_required: bool = False
     context7_packages: list[str] = field(default_factory=list)
     focus: list[str] = field(default_factory=list)
@@ -126,6 +126,7 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
         self._cache: dict[str, ValidatorMetadata] | None = None
         self._grouped_cache: dict[str, list[ValidatorMetadata]] | None = None
         self._default_wave: str | None = None
+        self._default_timeout: int | None = None
 
     @property
     def default_wave(self) -> str:
@@ -140,6 +141,23 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
             defaults = validation_cfg.get("defaults", {}) or {}
             self._default_wave = defaults.get("wave", "comprehensive")
         return self._default_wave
+
+    @property
+    def default_timeout(self) -> int:
+        """Get the default per-validator timeout in seconds.
+
+        Reads from validation.execution.timeout (preferred) and fails closed to 1500s.
+        """
+        if self._default_timeout is None:
+            config = self._load_config()
+            validation_cfg = config.get("validation", {}) or {}
+            execution = validation_cfg.get("execution", {}) if isinstance(validation_cfg, dict) else {}
+            raw = execution.get("timeout", 1500) if isinstance(execution, dict) else 1500
+            try:
+                self._default_timeout = int(raw)
+            except Exception:
+                self._default_timeout = 1500
+        return self._default_timeout
 
     def _load_config(self) -> dict[str, Any]:
         """Load configuration."""
@@ -187,6 +205,12 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
         if isinstance(raw_web_server, dict):
             web_server = dict(raw_web_server)
 
+        raw_timeout = entry.get("timeout", self.default_timeout)
+        try:
+            timeout = int(raw_timeout)
+        except Exception:
+            timeout = self.default_timeout
+
         return ValidatorMetadata(
             id=validator_id,
             name=entry.get("name", validator_id.replace("-", " ").title()),
@@ -198,7 +222,7 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
             always_run=entry.get("always_run", False),
             fallback_engine=entry.get("fallback_engine", ""),
             prompt=entry.get("prompt", ""),
-            timeout=entry.get("timeout", 300),
+            timeout=timeout,
             context7_required=entry.get("context7_required", False),
             context7_packages=entry.get("context7_packages", []),
             focus=entry.get("focus", []),

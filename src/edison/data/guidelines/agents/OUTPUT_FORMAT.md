@@ -6,9 +6,9 @@ Canonical format: **Markdown + YAML frontmatter** (LLM-readable body, machine-re
 
 ## Where it lives
 
-- Evidence root: `{{fn:evidence_root}}/<task-id>/`
-- Round directory: `round-<N>/` (append-only; never overwrite old rounds)
+- Round directory: `{{fn:evidence_root}}/<task-id>/round-<N>/` (append-only; never overwrite old rounds)
 - Report filename: **config-driven** (`validation.artifactPaths.implementationReportFile`, default `{{config.validation.artifactPaths.implementationReportFile}}`)
+- Command evidence: stored separately under the fingerprinted snapshot store (`.project/qa/evidence-snapshots/...`) and may be shared across tasks/rounds when the repo fingerprint is unchanged.
 
 Example path:
 - `{{fn:evidence_root}}/<task-id>/round-1/{{config.validation.artifactPaths.implementationReportFile}}`
@@ -44,8 +44,8 @@ blockers:
     owner: "user"
 tddCompliance:
   followed: true
-  redEvidence: "{{fn:evidence_file(\"test\")}}"
-  greenEvidence: "{{fn:evidence_file(\"test\")}}"
+  redEvidence: "edison evidence status <task-id> --preset <preset>"
+  greenEvidence: "edison evidence status <task-id> --preset <preset>"
   notes: ""
 tracking:
   processId: 12345
@@ -65,5 +65,6 @@ After the frontmatter, include a short Markdown body for humans/validators (reco
 ## Critical rules
 
 - **`followUpTasks[]` is the canonical follow-up channel** for implementation-discovered work; `edison session next` reads it to propose splits and to enforce parent/child semantics.
-- Evidence files (automation logs, Context7 markers, screenshots, exports) must live in the same round directory and be referenced from the report and the QA brief.
+- Round artifacts (validator reports, `{{config.validation.artifactPaths.bundleSummaryFile}}`, Context7 markers, screenshots) live in the round directory and must be referenced from the report and QA brief.
+- Command evidence (build/test/lint outputs) must be captured via `edison evidence capture` and is referenced via `edison evidence status` (snapshot-based).
 - Keep report content factual and actionable; no vague “done” statements without evidence pointers.

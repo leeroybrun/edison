@@ -27,5 +27,6 @@ Reports are written as **Markdown with YAML frontmatter**:
 ## Related Code
 
 - `edison qa validate` - Validator execution
-- `{{fn:evidence_root}}/` - Validation output storage
+- `{{fn:evidence_root}}/` - Round artefacts (reports/markers/summaries)
+- `.project/qa/evidence-snapshots/` - Command evidence snapshots (build/test/lint outputs)
 - Agent delegation workflows

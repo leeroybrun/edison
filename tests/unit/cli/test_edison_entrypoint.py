@@ -185,9 +185,7 @@ def test_evidence_help_does_not_advertise_deprecated_init(capsys: pytest.Capture
     assert "Initialize evidence directories" not in out
 
 
-def test_rewrite_deprecated_evidence_init_invocation() -> None:
+def test_rewrite_deprecated_invocations_noops_when_no_aliases_configured() -> None:
     argv, deprecated = _rewrite_deprecated_invocations(["evidence", "init", "some-task-id", "--json"])
-    assert deprecated == "evidence init"
-    assert argv[:3] == ["qa", "round", "prepare"]
-    assert argv[3] == "some-task-id"
-    assert "--json" in argv
+    assert deprecated is None
+    assert argv == ["evidence", "init", "some-task-id", "--json"]

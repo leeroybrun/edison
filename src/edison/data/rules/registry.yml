@@ -96,16 +96,17 @@ rules:
 
     Reference: `guidelines/shared/CONTEXT7.md`
 - id: RULE.EVIDENCE.ROUND_COMMANDS_REQUIRED
-  title: Round Evidence Requires 4 Command Outputs
+  title: Preset-required command evidence must be captured
   category: validation
   blocking: false
   severity: warning
   applies_to: [orchestrator, validator]
   sourcePath: guidelines/shared/VALIDATION.md
   guidance: |
-    Each evidence round must include the project’s required automation command outputs:
-    - Capture type-check, lint, test, and build outputs (or project equivalents) using the configured filenames.
-    - Evidence must come from trusted runners/guards (not manually fabricated output).
+    Before executing validators, ensure preset-required command evidence exists and passes for the current repo fingerprint:
+    - Inspect: `edison evidence status <task-id> [--preset <preset>]`
+    - Capture: `edison evidence capture <task-id> [--preset <preset>]`
+    - Evidence is snapshot-based (shared across rounds/tasks when the repo fingerprint is unchanged). Do not redirect output into files manually.
 
     Reference: `guidelines/shared/VALIDATION.md`
 - id: RULE.QA.ROUND_HISTORY

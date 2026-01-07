@@ -5,7 +5,7 @@ Run after implementation is complete and before a task can advance beyond `{{fn:
 
 ## Validation Checklist (fail-closed)
 - Build the triggered validator roster from the merged `validation.validators` config (core → packs → user → project) and the task/session file context (git diff + primary files).
-- Automation evidence passing for the round (config-driven; see required evidence for the task’s validation preset).
+- Command evidence passing for the **current repo fingerprint** (preset-driven). Inspect with `edison evidence status <task-id> [--preset <preset>]` and capture with `edison evidence capture <task-id> [--preset <preset>]`.
 - QA brief exists in `qa/{{fn:semantic_states("qa","waiting,todo,wip","brace")}}` with roster, commands, expected results, and evidence links; never duplicate QA files.
 - Bundle manifest generated before launching validators (see Bundle section).
 - Context7 refreshed for every Context7-detected package; add `context7-<pkg>.txt` markers per package in the round evidence directory.
@@ -82,12 +82,12 @@ Before any validator wave, run the guarded bundle helper (`edison qa bundle <tas
 - QA promotion guards (`edison qa promote` and `edison qa promote <task-id> --status validated`) now enforce both bundle manifest + `{{config.validation.artifactPaths.bundleSummaryFile}}` existence.
 
 ## Sequence (strict order)
-1) Automation evidence captured (required: {{fn:required_evidence_files("inline")}}).
+1) Command evidence captured (preset-driven; check with `edison evidence status <task-id> --preset <preset>` and capture with `edison evidence capture <task-id> --preset <preset>`). Evidence is stored in the fingerprinted snapshot store and may be reused across rounds when the repo fingerprint is unchanged.
 2) Context7 refreshes for all Context7-detected packages; save `context7-<pkg>.txt` markers.
 3) Detect changed files → map to validator roster.
 4) Update QA with validator list, commands, expected results, evidence links, and bundle manifest.
 5) Run validators in waves (respect models and concurrency cap). Summarize each report in QA.
-6) Store raw artefacts under `{{fn:evidence_root}}/<task-id>/round-<N>/` and reference them in QA.
+6) Store round artefacts under `{{fn:evidence_root}}/<task-id>/round-<N>/` (validator reports + `{{config.validation.artifactPaths.bundleSummaryFile}}` + Context7 markers) and reference them in QA. Command evidence lives in `.project/qa/evidence-snapshots/...` (reported by `edison evidence status`).
 7) Move QA/task only after ALL blocking validators approve and `approved=true` is recorded in `{{config.validation.artifactPaths.bundleSummaryFile}}`.
 
 ## Failure & Re-runs
@@ -115,7 +115,7 @@ Repeat until APPROVE or escalate
 
 1. **Read rejection report**: Understand ALL issues
 2. **Fix ALL issues**: Don't fix one and re-submit
-3. **Re-run failed validators**: Use `edison qa validate --validators=<failed>`
+3. **Re-run failed validators**: Use `edison qa validate <task-id> --validators <failed-id>... --execute`
 4. **Document fixes**: Update implementation report
 
 ### Maximum Rounds

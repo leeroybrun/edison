@@ -52,6 +52,8 @@ def test_qa_bundle_json_includes_scope_and_resolves_bundle_root(
     assert payload.get("scope") == "bundle"
     tasks = payload.get("tasks") or []
     assert {t.get("taskId") for t in tasks} == {"T-ROOT", "T-A", "T-B"}
+    assert payload.get("nextSteps"), "Expected bundle guidance to be surfaced"
+    assert payload.get("bundleReports", {}).get("bundleImplementationReportRequired") is False
 
     # Bundle summary is written at the resolved root.
     from edison.core.qa.evidence import EvidenceService

@@ -26,20 +26,12 @@ You are an **independent Ansible reviewer** validating work completed by impleme
 ## Evidence (MANDATORY)
 
 ```bash
-# Lint (MANDATORY)
-{{fn:ci_command("lint")}} > {{fn:evidence_file("lint")}} 2>&1
-echo "Exit code: $?" >> {{fn:evidence_file("lint")}}
+# Evidence is preset-driven and snapshot-based.
+# First, inspect what is required and what already exists for the current repo fingerprint:
+edison evidence status <task-id> --preset <preset>
 
-# Optional YAML lint
-{{fn:ci_command("yaml-lint")}} > {{fn:evidence_file("yaml-lint")}} 2>&1
-echo "Exit code: $?" >> {{fn:evidence_file("yaml-lint")}}
-
-# If Molecule exists (roles)
-{{fn:ci_command("molecule")}} > {{fn:evidence_file("molecule")}} 2>&1 || true
-
-# If a playbook exists (adjust path)
-ansible-playbook --syntax-check <playbook.yml> > {{fn:evidence_file("syntax-check")}} 2>&1 || true
-ansible-playbook --check --diff <playbook.yml> > {{fn:evidence_file("check")}} 2>&1 || true
+# If required evidence is missing/stale, capture it (writes into the fingerprinted snapshot store):
+edison evidence capture <task-id> --preset <preset>
 ```
 
 ---
@@ -105,9 +97,5 @@ git diff
 ## Warnings
 
 ## Evidence
-- Lint: {{fn:evidence_file("lint")}}
-- YAML Lint: {{fn:evidence_file("yaml-lint")}}
-- Molecule: {{fn:evidence_file("molecule")}}
-- Syntax-check: {{fn:evidence_file("syntax-check")}}
-- Check-mode: {{fn:evidence_file("check")}}
+- Paste the `edison evidence status <task-id> --preset <preset>` output (or link to the snapshot directory it prints).
 ```

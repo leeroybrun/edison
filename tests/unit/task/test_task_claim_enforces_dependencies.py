@@ -78,3 +78,37 @@ def test_claim_task_allows_when_depends_on_satisfied(isolated_project_env: Path)
 
     claimed = TaskQAWorkflow(project_root).claim_task("task-with-dep-2", session_id)
     assert claimed.state == str(workflow.get_semantic_state("task", "wip"))
+
+
+@pytest.mark.task
+def test_claim_task_allows_when_dependency_is_satisfied_in_same_session(isolated_project_env: Path) -> None:
+    project_root = isolated_project_env
+    session_id = "test-session-claim-deps-3"
+
+    session_repo = SessionRepository(project_root)
+    session_repo.create(Session.create(session_id, state="wip"))
+
+    workflow = WorkflowConfig(repo_root=project_root)
+    todo = workflow.get_semantic_state("task", "todo")
+    done = workflow.get_semantic_state("task", "done")
+
+    repo = TaskRepository(project_root=project_root)
+    dep_done_in_session = Task(
+        id="dep-done-session",
+        state=done,
+        title="Dependency done in session",
+        session_id=session_id,
+        metadata=EntityMetadata.create(created_by="test"),
+    )
+    task = Task(
+        id="task-with-session-dep",
+        state=todo,
+        title="Task with session dependency",
+        relationships=[{"type": "depends_on", "target": "dep-done-session"}],
+        metadata=EntityMetadata.create(created_by="test"),
+    )
+    repo.save(dep_done_in_session)
+    repo.save(task)
+
+    claimed = TaskQAWorkflow(project_root).claim_task("task-with-session-dep", session_id)
+    assert claimed.state == str(workflow.get_semantic_state("task", "wip"))

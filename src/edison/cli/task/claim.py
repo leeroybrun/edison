@@ -86,6 +86,10 @@ def main(args: argparse.Namespace) -> int:
     """Claim task - delegates to core library using entity-based API."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
+    project_root: Path | None = None
+    session_id: str | None = None
+    record_type: str | None = None
+    record_id: str | None = None
 
     try:
         # Resolve project root
@@ -345,7 +349,35 @@ def main(args: argparse.Namespace) -> int:
         return 0
 
     except Exception as e:
-        formatter.error(e, error_code="claim_error")
+        extra: dict[str, Any] = {}
+
+        # When a task claim fails due to dependency blocking, surface blockers inline
+        # so the operator/agent doesn't have to run a second command to understand why.
+        try:
+            if record_type == "task" and project_root is not None and record_id:
+                from edison.core.task.readiness import TaskReadinessEvaluator
+
+                evaluator = TaskReadinessEvaluator(project_root=project_root)
+                readiness = evaluator.evaluate_task(record_id, session_id=session_id)
+                if readiness.blocked_by:
+                    extra.update(readiness.to_blocked_list_dict())
+        except Exception:
+            pass
+
+        if not formatter.json_mode and extra.get("blockedBy"):
+            try:
+                formatter.text("")
+                formatter.text("Blocked by unmet dependencies:")
+                for b in extra.get("blockedBy", []):
+                    dep = str(b.get("dependencyId") or "").strip()
+                    reason = str(b.get("reason") or "").strip()
+                    sid = str(b.get("dependencySessionId") or "").strip()
+                    suffix = f" (session {sid})" if sid else ""
+                    formatter.text(f"  - {dep}: {reason}{suffix}")
+            except Exception:
+                pass
+
+        formatter.error(e, error_code="claim_error", data=extra or None)
         return 1
 
 

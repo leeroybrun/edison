@@ -20,6 +20,10 @@ from edison.cli import (
 )
 from edison.core.qa import promoter, bundler
 from edison.core.qa.evidence import EvidenceService, read_validator_reports
+from edison.core.qa.workflow.next_steps import (
+    build_promote_next_steps_payload,
+    format_promote_next_steps_text,
+)
 from edison.core.state.transitions import validate_transition
 
 SUMMARY = "Promote QA brief between states"
@@ -186,10 +190,18 @@ def main(args: argparse.Namespace) -> int:
             task_files = promoter.collect_task_files([task_id], args.session)
 
             if promoter.should_revalidate_bundle(bundle_path, reports, task_files):
-                formatter.error(
-                    "Bundle is stale. Run validation again before promoting to validated.",
-                    error_code="revalidation_required"
+                payload = build_promote_next_steps_payload(
+                    task_id=task_id,
+                    target_status=str(args.status),
+                    reason="revalidation_required",
                 )
+                formatter.error(
+                    ValueError("Bundle is stale. Re-run validation before promoting to validated."),
+                    error_code="revalidation_required",
+                    data={"nextSteps": payload},
+                )
+                if not formatter.json_mode:
+                    print(format_promote_next_steps_text(payload), file=sys.stderr)
                 return 1
 
         # Execute the promotion with guard validation + action execution.

@@ -93,6 +93,7 @@ class QAValidatePreflightChecklistEngine:
                 task_id=root,
                 round_num=round_num,
                 will_execute=will_execute,
+                preset_name=str(roster.get("preset") or "").strip() or None,
             )
         )
         items.append(
@@ -279,11 +280,12 @@ class QAValidatePreflightChecklistEngine:
         task_id: str,
         round_num: int | None,
         will_execute: bool,
+        preset_name: str | None,
     ) -> ChecklistItem:
         from edison.core.qa.policy.resolver import ValidationPolicyResolver
 
         target, target_dir, _current = self._resolve_target_round(task_id=task_id, round_num=round_num)
-        policy = ValidationPolicyResolver(project_root=self.project_root).resolve_for_task(task_id)
+        policy = ValidationPolicyResolver(project_root=self.project_root).resolve_for_task(task_id, preset_name=preset_name)
         required = [str(x).strip() for x in (policy.required_evidence or []) if str(x).strip()]
 
         if not required:
@@ -297,69 +299,80 @@ class QAValidatePreflightChecklistEngine:
                 suggested_commands=[],
             )
 
-        if target is None or target_dir is None:
-            # No rounds yet.
-            sev = "warning" if will_execute else "info"
-            rationale = "Required evidence patterns exist, but no round directory exists yet."
-            return ChecklistItem(
-                id="required-evidence",
-                severity=sev,
-                title="Required Evidence (Preset)",
-                rationale=rationale,
-                status="unknown",
-                evidence_paths=[],
-                suggested_commands=[
-                    f"edison qa round prepare {task_id}",
-                    f"edison evidence capture {task_id}",
-                ],
-            )
+        from edison.core.config.domains.qa import QAConfig
 
-        if not target_dir.exists():
-            sev = "warning" if will_execute else "warning"
-            return ChecklistItem(
-                id="required-evidence",
-                severity=sev,
-                title="Required Evidence (Preset)",
-                rationale=f"Evidence round {target} does not exist yet, so required evidence cannot be present.",
-                status="missing",
-                evidence_paths=[self._display_path(target_dir)],
-                suggested_commands=[f"edison qa round prepare {task_id}"],
-            )
+        qa_cfg = QAConfig(repo_root=self.project_root)
+        evidence_files_cfg = (qa_cfg.validation_config.get("evidence", {}) or {}).get("files", {}) or {}
+        if not isinstance(evidence_files_cfg, dict):
+            evidence_files_cfg = {}
+        command_evidence_names = {str(v).strip() for v in evidence_files_cfg.values() if str(v).strip()}
+        command_required = [p for p in required if str(p).startswith("command-") or str(p) in command_evidence_names]
 
-        from edison.core.qa.evidence.analysis import list_evidence_files
+        # Evaluate repo-state command evidence (snapshot store).
+        from edison.core.qa.evidence.command_status import get_command_evidence_status
 
-        try:
-            files = {str(p.relative_to(target_dir)) for p in list_evidence_files(target_dir)}
-        except Exception:
-            files = {p.name for p in target_dir.iterdir() if p.is_file()}
+        status = get_command_evidence_status(project_root=self.project_root, task_id=task_id, preset_name=policy.preset.name)
+        missing_cmd_files = [str(x) for x in (status.get("missing") or []) if str(x)]
+        invalid_cmd_files = [str(i.get("file")) for i in (status.get("invalid") or []) if isinstance(i, dict) and i.get("file")]
+        failed_cmd_files = [str(f.get("file")) for f in (status.get("failed") or []) if isinstance(f, dict) and f.get("file")]
+        any_stale = bool(status.get("anyStale", False))
+        strict_stale = str(getattr(policy.preset, "stale_evidence", "warn") or "warn").strip().lower() == "block"
 
-        missing: list[str] = []
-        for pattern in required:
-            if not any(Path(name).match(str(pattern)) for name in files):
-                missing.append(str(pattern))
+        missing_cmds = [str(c) for c in (status.get("missingCommands") or []) if str(c).strip()]
+        suggested: list[str] = []
+        suggested.append(f"edison evidence status {task_id}")
+        if missing_cmds:
+            suggested.append(f"edison evidence capture {task_id} --only {','.join(sorted(set(missing_cmds)))}")
+        else:
+            suggested.append(f"edison evidence capture {task_id}")
 
-        if not missing:
+        # Round-scoped required evidence patterns (non-command).
+        round_required = [str(p) for p in required if str(p) not in set(command_required)]
+        missing_round: list[str] = []
+        if target is not None and target_dir is not None and target_dir.exists() and round_required:
+            from edison.core.qa.evidence.analysis import list_evidence_files
+
+            try:
+                files = {str(p.relative_to(target_dir)) for p in list_evidence_files(target_dir)}
+            except Exception:
+                files = {p.name for p in target_dir.iterdir() if p.is_file()}
+            for pattern in round_required:
+                if not any(Path(name).match(str(pattern)) for name in files):
+                    missing_round.append(str(pattern))
+
+        missing_any = bool(missing_cmd_files or invalid_cmd_files or failed_cmd_files or missing_round or (strict_stale and any_stale))
+
+        if not missing_any:
             return ChecklistItem(
                 id="required-evidence",
                 severity="info",
                 title="Required Evidence (Preset)",
-                rationale=f"All required evidence patterns are present in round-{target}.",
+                rationale=f"All required evidence is present for preset '{policy.preset.name}'.",
                 status="ok",
-                evidence_paths=[self._display_path(target_dir)],
+                evidence_paths=[],
                 suggested_commands=[],
             )
 
-        sev = "warning"
-        suggested = [f"edison evidence capture {task_id}"]
-        if will_execute:
-            suggested.append(f"edison qa validate {task_id} --execute")
+        sev = "blocker" if will_execute else "warning"
+        reasons: list[str] = []
+        if missing_cmd_files:
+            reasons.append(f"Missing command evidence: {', '.join(missing_cmd_files)}")
+        if invalid_cmd_files:
+            reasons.append(f"Invalid command evidence: {', '.join(invalid_cmd_files)}")
+        if failed_cmd_files:
+            reasons.append(f"Failed command evidence: {', '.join(failed_cmd_files)}")
+        if strict_stale and any_stale:
+            reasons.append("Command evidence is stale (policy=block).")
+        if missing_round and target is not None:
+            reasons.append(f"Missing round evidence in round-{target}: {', '.join(missing_round)}")
+
         return ChecklistItem(
             id="required-evidence",
             severity=sev,
             title="Required Evidence (Preset) Missing",
-            rationale=f"Missing evidence patterns in round-{target}: {', '.join(missing)}",
+            rationale="; ".join([r for r in reasons if r]),
             status="missing",
-            evidence_paths=[self._display_path(target_dir)],
+            evidence_paths=[self._display_path(target_dir)] if target_dir is not None else [],
             suggested_commands=suggested,
         )
 

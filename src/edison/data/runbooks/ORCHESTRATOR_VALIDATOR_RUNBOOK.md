@@ -22,7 +22,8 @@
    - The command resolves triggered validators based on the bundle + roster; captures round number in the evidence tree.
 
 ## 2. Interpret validation results
-- Evidence lives in `{{fn:evidence_root}}/<task-id>/round-<N>/`.
+- Round artefacts live in `{{fn:evidence_root}}/<task-id>/round-<N>/` (validator reports + `{{config.validation.artifactPaths.bundleSummaryFile}}` + round-scoped report deltas/markers).
+- Command evidence is snapshot-based under `.project/qa/evidence-snapshots/...` and should be inspected via `edison evidence status <task-id>` (and captured via `edison evidence capture <task-id>` when missing/stale).
 - Per-validator reports include `status` and `blocksOnFail`; treat any blocking failure as a hard reject.
 - `{{config.validation.artifactPaths.bundleSummaryFile}}` is the canonical summary:
   - `approved=true` → QA may move toward `{{fn:semantic_states("qa","done,validated","pipe")}}`.

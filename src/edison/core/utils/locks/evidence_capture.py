@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from edison.core.utils.io.locking import LockTimeoutError, acquire_file_lock
-from edison.core.utils.paths.management import get_management_paths
+from edison.core.utils.locks.named import named_lock_path
 from edison.core.utils.locks.file_metadata import write_lock_metadata
 
 
@@ -22,9 +22,12 @@ def _slug(value: str) -> str:
 
 
 def evidence_capture_lock_path(*, project_root: Path, command_group: str) -> Path:
-    qa_root = get_management_paths(project_root).get_qa_root()
-    locks_dir = qa_root / "locks"
-    return locks_dir / f"evidence-capture-{_slug(command_group)}.lock"
+    return named_lock_path(
+        repo_root=project_root,
+        namespace="evidence_capture",
+        key=_slug(command_group),
+        scope="repo",
+    )
 
 
 @contextmanager

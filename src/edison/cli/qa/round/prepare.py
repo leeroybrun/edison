@@ -10,10 +10,20 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root, resolve_session_id
+import sys
+
+from edison.cli import (
+    OutputFormatter,
+    add_json_flag,
+    add_repo_root_flag,
+    get_repo_root,
+    resolve_existing_task_id,
+    resolve_session_id,
+)
 from edison.cli._worktree_enforcement import maybe_enforce_session_worktree
 from edison.core.qa.evidence import EvidenceService
 from edison.core.qa.workflow.repository import QARepository
+from edison.core.qa.workflow.next_steps import build_round_next_steps, format_steps_text
 
 SUMMARY = "Prepare a new QA evidence round (creates round-N and initializes reports)"
 
@@ -65,6 +75,14 @@ def main(args: argparse.Namespace) -> int:
             return int(blocked)
 
         session_id = resolve_session_id(project_root=repo_root, explicit=args.session, required=False)
+
+        raw_task_id = str(args.task_id)
+        try:
+            args.task_id = resolve_existing_task_id(project_root=repo_root, raw_task_id=raw_task_id)
+        except Exception:
+            args.task_id = raw_task_id
+        if str(args.task_id) != raw_task_id and not formatter.json_mode:
+            print(f"Resolved task id '{raw_task_id}' -> '{args.task_id}'", file=sys.stderr)
 
         from edison.core.qa.bundler import build_validation_manifest
 
@@ -204,6 +222,7 @@ def main(args: argparse.Namespace) -> int:
             )
 
         if formatter.json_mode:
+            steps = build_round_next_steps(root_task_id=root_task_id, scope=scope_used, round_num=int(round_num))
             formatter.json_output(
                 {
                     "taskId": str(args.task_id),
@@ -214,15 +233,15 @@ def main(args: argparse.Namespace) -> int:
                     "evidenceDir": str(round_dir.relative_to(repo_root)),
                     "implementationReport": str((round_dir / ev.implementation_filename).relative_to(repo_root)),
                     "validationSummary": str((round_dir / ev.bundle_filename).relative_to(repo_root)),
+                    "nextSteps": steps,
                 }
             )
         else:
+            steps = build_round_next_steps(root_task_id=root_task_id, scope=scope_used, round_num=int(round_num))
             formatter.text(f"Prepared round {round_num} for {root_task_id} (scope={scope_used}).")
             formatter.text(f"  Evidence: {round_dir.relative_to(repo_root)}")
             formatter.text("")
-            formatter.text("Next steps:")
-            formatter.text(f"  edison evidence capture {root_task_id}")
-            formatter.text(f"  edison qa validate {args.task_id} --execute --round {round_num}")
+            formatter.text(format_steps_text(steps))
 
         return 0
     except Exception as e:

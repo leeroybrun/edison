@@ -16,8 +16,9 @@ You are an independent reviewer validating TypeScript changes. Enforce strict ty
 ## Evidence to collect
 
 ```bash
-{{fn:ci_command("type-check")}} > {{fn:evidence_file("type-check")}} 2>&1
-echo "Exit code: $?" >> {{fn:evidence_file("type-check")}}
+# Evidence is captured via Edison (snapshot-based) rather than redirected to files manually.
+edison evidence status <task-id> --preset <preset>
+edison evidence capture <task-id> --preset <preset>
 ```
 
 ---

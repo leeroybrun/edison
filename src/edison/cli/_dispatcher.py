@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from edison.cli._aliases import domain_cli_names, resolve_canonical_domain
+from edison.cli._progress import cli_progress
 from edison.core.utils.profiling import Profiler, enable_profiler, span
 
 
@@ -633,10 +634,6 @@ def _rewrite_deprecated_invocations(argv: list[str]) -> tuple[list[str], str | N
     We remove deprecated subcommands from discovery/help to keep the CLI crisp,
     but we still accept their old spellings for backwards compatibility.
     """
-    if len(argv) >= 2 and argv[0] == "evidence" and argv[1] == "init":
-        # `edison evidence init <task> ...` -> `edison qa round prepare <task> ...`
-        return ["qa", "round", "prepare", *argv[2:]], "evidence init"
-
     return argv, None
 
 
@@ -937,8 +934,14 @@ def main(argv: list[str] | None = None) -> int:
                                     except Exception:
                                         pass
                                 return result
-                        with span("cli.command.exec", command=command_name):
-                            result = func(args)
+                        with cli_progress(
+                            command_name=command_name,
+                            argv=list(argv),
+                            project_root=project_root,
+                            json_mode=json_mode,
+                        ):
+                            with span("cli.command.exec", command=command_name):
+                                result = func(args)
                     except KeyboardInterrupt:
                         print("\nInterrupted.", file=sys.stderr)
                         result = 130

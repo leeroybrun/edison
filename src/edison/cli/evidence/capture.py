@@ -134,6 +134,7 @@ def main(args: argparse.Namespace) -> int:
         from edison.core.config.domains.qa import QAConfig
         from edison.core.config.domains.tdd import TDDConfig
         from edison.core.qa.evidence.command_evidence import write_command_evidence
+        from edison.core.qa.evidence.command_status import get_command_evidence_status
         from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir, snapshot_status
         from edison.core.qa.policy.resolver import ValidationPolicyResolver
         from edison.core.utils.git.fingerprint import compute_repo_fingerprint
@@ -147,30 +148,32 @@ def main(args: argparse.Namespace) -> int:
         if not ci_commands:
             raise RuntimeError("No CI commands configured (missing `ci.commands` in config).")
 
+        # Resolve the validation policy up front so output is stable even when
+        # the operator uses `--only` for targeted reruns.
+        qa_cfg = QAConfig(repo_root=project_root)
+        evidence_files_cfg = (qa_cfg.validation_config.get("evidence", {}) or {}).get("files", {}) or {}
+        if not isinstance(evidence_files_cfg, dict):
+            evidence_files_cfg = {}
+
+        required_files: list[str] = []
+        if session_close:
+            from edison.core.qa.policy.session_close import get_session_close_policy
+
+            policy = get_session_close_policy(project_root=project_root)
+            resolved_preset = policy.preset.name
+            required_files = list(policy.required_evidence or [])
+        else:
+            resolver = ValidationPolicyResolver(project_root=project_root)
+            policy = resolver.resolve_for_task(task_id, preset_name=str(preset_name).strip() if preset_name else None)
+            resolved_preset = policy.preset.name
+            required_files = list(policy.required_evidence or [])
+
         if only:
             missing = [n for n in only if n not in ci_commands]
             if missing:
                 raise RuntimeError(f"Unknown CI command(s): {', '.join(missing)} (check `ci.commands`).")
             ci_commands = {k: ci_commands[k] for k in only}
         elif not run_all:
-            qa_cfg = QAConfig(repo_root=project_root)
-            evidence_files_cfg = (qa_cfg.validation_config.get("evidence", {}) or {}).get("files", {}) or {}
-            if not isinstance(evidence_files_cfg, dict):
-                evidence_files_cfg = {}
-
-            required_files: list[str] = []
-            if session_close:
-                from edison.core.qa.policy.session_close import get_session_close_policy
-
-                policy = get_session_close_policy(project_root=project_root)
-                resolved_preset = policy.preset.name
-                required_files = list(policy.required_evidence or [])
-            else:
-                resolver = ValidationPolicyResolver(project_root=project_root)
-                policy = resolver.resolve_for_task(task_id, preset_name=str(preset_name).strip() if preset_name else None)
-                resolved_preset = policy.preset.name
-                required_files = list(policy.required_evidence or [])
-
             required_set = {str(x).strip() for x in required_files if str(x).strip()}
             if not required_set:
                 ci_commands = {}
@@ -198,10 +201,7 @@ def main(args: argparse.Namespace) -> int:
                     required_set = set()
                 ci_commands = runnable
 
-        qa_config = QAConfig(repo_root=project_root)
-        evidence_files = (qa_config.validation_config.get("evidence", {}) or {}).get("files", {}) or {}
-        if not isinstance(evidence_files, dict):
-            evidence_files = {}
+        evidence_files = evidence_files_cfg
 
         tdd_cfg = TDDConfig(repo_root=project_root)
         hmac_key = ""
@@ -348,6 +348,17 @@ def main(args: argparse.Namespace) -> int:
             "preset": resolved_preset,
         }
 
+        # Always include the preset-aware status for the current repo fingerprint so
+        # agents running a targeted `--only` capture don't mistakenly assume they
+        # satisfied the preset requirements.
+        preset_status: dict[str, Any] | None = None
+        try:
+            preset_status = get_command_evidence_status(project_root=project_root, task_id=task_id, preset_name=resolved_preset)
+        except Exception:
+            preset_status = None
+        if preset_status is not None:
+            payload["presetEvidenceStatus"] = preset_status
+
         if formatter.json_mode:
             formatter.json_output(payload)
         else:
@@ -356,6 +367,22 @@ def main(args: argparse.Namespace) -> int:
             formatter.text(f"Captured {len(results)} command(s): {passed} passed, {failed} failed (mode={mode_label}{preset_label})")
             if results:
                 formatter.text("Review evidence outputs before proceeding.")
+            if preset_status is not None and not bool(preset_status.get("success", False)):
+                missing_files = preset_status.get("missing") or []
+                missing_cmds = preset_status.get("missingCommands") or []
+                if missing_files:
+                    formatter.text("")
+                    formatter.text(
+                        "Note: this capture does NOT satisfy the preset's required command evidence yet."
+                    )
+                    formatter.text(f"- Missing: {', '.join([str(x) for x in missing_files])}")
+                    if missing_cmds:
+                        formatter.text(
+                            "- Fix: "
+                            + " ".join(["edison evidence capture", task_id, "--only", ",".join([str(c) for c in missing_cmds])])
+                        )
+                    else:
+                        formatter.text(f"- Fix: edison evidence capture {task_id}")
 
         return 0 if failed == 0 or continue_on_failure else 1
 

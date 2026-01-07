@@ -9,6 +9,7 @@ import pytest
 @pytest.mark.qa
 def test_qa_round_prepare_initializes_round_artifacts(
     isolated_project_env: Path,
+    capsys: pytest.CaptureFixture[str],
     monkeypatch,
 ) -> None:
     monkeypatch.chdir(isolated_project_env)
@@ -66,6 +67,8 @@ def test_qa_round_prepare_initializes_round_artifacts(
         )
     )
     assert rc == 0
+    out = capsys.readouterr().out
+    assert "nextSteps" in out
 
     round_num = root_ev.get_current_round()
     assert round_num is not None
