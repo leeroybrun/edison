@@ -411,24 +411,54 @@ def isolated_project_env(tmp_path, monkeypatch, _isolated_project_template_dir: 
     monkeypatch.delenv("EDISON_paths__project_config_dir", raising=False)
     monkeypatch.chdir(repo_root)
 
-    # Stub external CLIs that should never hit network during tests.
-    # CodeRabbit's real CLI can take minutes and may require auth; tests should be deterministic.
+    # Stub external CLIs that should never hit network during tests unless explicitly enabled.
+    #
+    # Some tests exercise validator execution paths. External LLM CLIs (codex/claude/gemini/etc)
+    # must not run accidentally during unit tests. To allow real binaries when intentionally
+    # testing integrations, set:
+    #   EDISON_TEST_ALLOW_EXTERNAL_CLIS=1
     try:
         import os
         import stat
 
-        bin_dir = tmp_path / ".fake-bin"
-        bin_dir.mkdir(parents=True, exist_ok=True)
-        coderabbit = bin_dir / "coderabbit"
-        coderabbit.write_text(
-            "#!/usr/bin/env python3\n"
-            "import sys\n"
-            "sys.stdout.write('review completed\\nType: suggestion\\n')\n"
-            "sys.exit(0)\n",
-            encoding="utf-8",
-        )
-        coderabbit.chmod(coderabbit.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-        monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH','')}")
+        allow_external = os.environ.get("EDISON_TEST_ALLOW_EXTERNAL_CLIS") == "1"
+
+        if not allow_external:
+            bin_dir = tmp_path / ".fake-bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH','')}")
+
+            def _write_fail_stub(name: str) -> None:
+                path = bin_dir / name
+                path.write_text(
+                    "#!/usr/bin/env python3\n"
+                    "import sys\n"
+                    "sys.stderr.write(\n"
+                    "  'Blocked external CLI in tests: {name}. '\n"
+                    "  'Set EDISON_TEST_ALLOW_EXTERNAL_CLIS=1 to allow.\\n'\n"
+                    ")\n"
+                    "sys.exit(127)\n".format(name=name),
+                    encoding="utf-8",
+                )
+                path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+            def _write_ok_stub(name: str, stdout: str) -> None:
+                path = bin_dir / name
+                path.write_text(
+                    "#!/usr/bin/env python3\n"
+                    "import sys\n"
+                    f"sys.stdout.write({stdout!r})\n"
+                    "sys.exit(0)\n",
+                    encoding="utf-8",
+                )
+                path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+            # Most external orchestrator/model CLIs should never run in unit tests.
+            for tool in ("codex", "claude", "gemini", "auggie", "cursor", "opencode"):
+                _write_fail_stub(tool)
+
+            # CodeRabbit is exercised by unit tests; keep a deterministic success stub.
+            _write_ok_stub("coderabbit", "review completed\\nType: suggestion\\n")
     except Exception:
         pass
 
