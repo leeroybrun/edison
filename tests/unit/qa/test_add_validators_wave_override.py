@@ -24,11 +24,22 @@ def _seed_impl_report(project_root: Path, task_id: str, files: list[str]) -> Non
     )
 
 
+def _disable_cli_engines(project_root: Path) -> None:
+    cfg_dir = project_root / ".edison" / "config"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    (cfg_dir / "orchestration.yml").write_text(
+        "orchestration:\n"
+        "  allowCliEngines: false\n",
+        encoding="utf-8",
+    )
+
+
 @pytest.mark.qa
 def test_add_validators_wave_prefix_executes_in_requested_wave(tmp_path: Path, monkeypatch) -> None:
     """`--add-validators <wave>:<id>` must run the validator in that wave even if its config wave differs."""
     repo = create_repo_with_git(tmp_path)
     create_project_structure(repo)
+    _disable_cli_engines(repo)
     setup_project_root(monkeypatch, repo)
     reset_edison_caches()
 
@@ -61,4 +72,3 @@ def test_add_validators_wave_prefix_executes_in_requested_wave(tmp_path: Path, m
 
     assert result.waves and result.waves[0].wave == "comprehensive"
     assert any(v.validator_id == "security" for v in result.waves[0].validators)
-
