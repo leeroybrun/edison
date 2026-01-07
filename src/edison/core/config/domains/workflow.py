@@ -136,6 +136,17 @@ class WorkflowConfig(BaseDomainConfig):
             return [str(s) for s in states_cfg]
         return []
 
+    @cached_property
+    def plan_states(self) -> List[str]:
+        """Get allowed plan states."""
+        plan_cfg = self._statemachine.get("plan", {})
+        states_cfg = plan_cfg.get("states", {})
+        if isinstance(states_cfg, dict):
+            return list(states_cfg.keys())
+        if isinstance(states_cfg, list):
+            return [str(s) for s in states_cfg]
+        return []
+
     def get_lifecycle_transition(self, event: str) -> Dict[str, str]:
         """Get transition details for a lifecycle event."""
         return self.validation_lifecycle.get(event, {})
@@ -286,7 +297,7 @@ class WorkflowConfig(BaseDomainConfig):
         """Get all states for a domain.
 
         Args:
-            domain: "task", "qa", or "session"
+            domain: "task", "qa", "session", or "plan"
 
         Returns:
             List of state names
@@ -300,6 +311,8 @@ class WorkflowConfig(BaseDomainConfig):
             return self.qa_states
         elif domain == "session":
             return self.session_states
+        elif domain == "plan":
+            return self.plan_states
         else:
             raise ValueError(f"Unknown domain: {domain}")
 

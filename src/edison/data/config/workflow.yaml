@@ -339,3 +339,21 @@ workflow:
           description: "Session archived"
           final: true
           allowed_transitions: []
+
+    plan:
+      states:
+        draft:
+          description: "Plan in draft state, not yet approved"
+          initial: true
+          allowed_transitions:
+            - to: approved
+              guard: always_allow
+        approved:
+          description: "Plan approved for implementation"
+          allowed_transitions:
+            - to: archived
+              guard: always_allow
+        archived:
+          description: "Plan archived (completed or superseded)"
+          final: true
+          allowed_transitions: []

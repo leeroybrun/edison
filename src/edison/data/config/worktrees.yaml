@@ -79,6 +79,9 @@ worktrees:
       - path: ".project/archive"
         scopes: ["primary", "session"]
         commitAllowed: false
+      - path: ".project/plans"
+        scopes: ["primary", "session"]
+        commitAllowed: true
 
       # Composed artifacts (meta-managed, never committed).
       - path: ".edison/_generated"
