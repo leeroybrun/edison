@@ -34,7 +34,12 @@ def _extract_task_id_from_args(args: argparse.Namespace) -> str | None:
     """Best-effort extraction of a task id from common CLI argument shapes."""
     raw = getattr(args, "task_id", None)
     if isinstance(raw, str) and raw.strip():
-        return raw.strip()
+        v = raw.strip()
+        # Some QA commands accept "<task>-qa" as a convenience. For task-scoped
+        # worktree inference we always want the underlying task id.
+        if v.endswith("-qa") or v.endswith(".qa"):
+            return v[:-3]
+        return v
     raw = getattr(args, "record_id", None)
     if isinstance(raw, str) and raw.strip():
         # Only treat record_id as task id when it is NOT a QA record.

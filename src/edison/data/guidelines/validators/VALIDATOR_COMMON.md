@@ -73,6 +73,10 @@ edison evidence show <task-id> --command <name>  # Review output for debugging
 ```
 
 **Evidence must be reviewed, not just generated:** if a captured run fails, fix and re-capture until `exitCode: 0`.
+If test runs are long, prefer this loop:
+- capture once to get the full failure list
+- iterate with tightly-scoped reruns (only failing tests / focused commands)
+- re-capture evidence for the full preset-required set once green so others can reuse the snapshot
 
 ### Step 3: Run Domain-Specific Checks
 

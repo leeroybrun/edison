@@ -53,6 +53,7 @@ If the task is missing acceptance criteria or scope boundaries, stop and ask for
    - **FIX any failures before proceeding** - evidence must show passing commands
    - For targeted reruns: `edison evidence capture <task-id> --only <name>` (alias: `--command <name>`)
    - Check status: `edison evidence status <task-id>`
+   - If tests fail: capture once to get the full failure list, then iterate via tightly-scoped reruns (only failing tests / focused commands) to avoid re-running the full suite after every change. When focused reruns are green, re-run `edison evidence capture` to refresh the reusable snapshot.
 
 **Critical**: Evidence is NOT just for recording—it proves you ran commands and fixed issues. If you capture a failing run, fix and re-capture until `exitCode: 0` before handoff.
 

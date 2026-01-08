@@ -30,6 +30,8 @@ edison evidence status <task-id>            # Check what's missing
    ```bash
    edison evidence capture <task-id>
    ```
+   - If capture shows failures, **capture once to get the full failure list**, then iterate with **tightly-scoped reruns** (only failing tests / focused commands) to avoid re-running the full suite after each fix.
+   - When the focused reruns are green, re-run `edison evidence capture <task-id>` (or `--only <name>`) to refresh the reusable snapshot for the current repo fingerprint.
 4. `edison evidence status <task-id>` - Verify all evidence captured
 5. `edison task done <task-id>` - Mark complete (preferred; `task ready <task-id>` is deprecated)
 

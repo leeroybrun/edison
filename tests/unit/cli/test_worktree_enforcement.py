@@ -235,3 +235,61 @@ def test_worktree_enforcement_blocks_evidence_capture_outside_worktree_for_sessi
     assert payload.get("error") == "worktree_enforcement"
     assert payload.get("command") == "evidence capture"
     assert payload.get("sessionId") == "sess-evidence"
+
+
+def test_worktree_enforcement_uses_task_id_even_when_qa_suffix_is_provided(
+    isolated_project_env: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Some QA commands accept '<task>-qa'; enforcement should still infer the task's session."""
+    cfg_dir = isolated_project_env / ".edison" / "config"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    (cfg_dir / "worktrees.yml").write_text(
+        yaml.safe_dump(
+            {
+                "worktrees": {
+                    "enabled": True,
+                    "baseBranchMode": "current",
+                    "baseBranch": None,
+                    "baseDirectory": str(tmp_path / "worktrees"),
+                    "archiveDirectory": str(tmp_path / "worktrees" / "_archived"),
+                    "branchPrefix": "session/",
+                    "enforcement": {"enabled": True, "commands": ["qa promote"]},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    from helpers.cache_utils import reset_edison_caches
+
+    reset_edison_caches()
+
+    from edison.cli._dispatcher import main as cli_main
+
+    code = cli_main(["session", "create", "--session-id", "sess-qa-suffix", "--owner", "tester", "--json"])
+    assert code == 0
+    _created = json.loads(capsys.readouterr().out or "{}")
+
+    # Create a session-scoped task so `qa promote <task>-qa` can infer the session.
+    session_tasks = (
+        isolated_project_env / ".project" / "sessions" / "wip" / "sess-qa-suffix" / "tasks" / "wip"
+    )
+    session_tasks.mkdir(parents=True, exist_ok=True)
+    (session_tasks / "T-QA-SUFFIX.md").write_text(
+        "---\n"
+        "id: T-QA-SUFFIX\n"
+        "title: QA suffix enforcement\n"
+        "session_id: sess-qa-suffix\n"
+        "---\n\n"
+        "Test task.\n",
+        encoding="utf-8",
+    )
+
+    # From the primary checkout, a mutating qa command should be blocked even if the
+    # task id is provided with a -qa suffix.
+    code2 = cli_main(["qa", "promote", "T-QA-SUFFIX-qa", "--status", "done", "--json"])
+    assert code2 == 2
+    payload = json.loads(capsys.readouterr().out or "{}")
+    assert payload.get("error") == "worktree_enforcement"
+    assert payload.get("command") == "qa promote"
+    assert payload.get("sessionId") == "sess-qa-suffix"
