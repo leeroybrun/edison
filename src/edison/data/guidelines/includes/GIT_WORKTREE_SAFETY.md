@@ -7,7 +7,7 @@
 - **All code changes must happen inside the session worktree directory** (never in the primary checkout).
 - After creating/resuming a session, run `edison session status --json`, read `git.worktreePath`, then `cd <worktreePath>` and stay there.
 - Edison shares local state into each worktree via symlinks: `{{fn:project_management_dir}}/` (tasks, QA, logs, archive, sessions), `{{fn:project_config_dir}}/_generated` (composed constitutions/guidelines), and any configured `worktrees.sharedState.sharedPaths`. If these links are missing, task/QA commands may appear “empty” and start prompts/constitutions may be absent inside the worktree.
-- **Session runtime state is local-only.** Do not commit `{{fn:sessions_root}}/` or `{{fn:project_management_dir}}/.session-id` (they should be gitignored).
+- **Runtime-only session/QA state must not be committed.** Ensure these paths are gitignored: `{{fn:sessions_root}}/_tx/`, `{{fn:sessions_root}}/_locks/`, `{{fn:project_management_dir}}/qa/locks/`, `{{fn:project_management_dir}}/qa/evidence-snapshots/`, and `{{fn:project_management_dir}}/.session-id`.
 <!-- /section: worktree-confinement -->
 
 <!-- section: worktree-isolation -->

@@ -13,6 +13,12 @@ managed_files:
         - ".worktrees/"
         - ".edison/_generated/"
         - ".edison/config.local/"
-        - ".project/sessions/"
+        # Meta-managed state is committable; ignore only runtime-only subtrees.
         - ".project/logs/"
         - ".project/archive/"
+        - ".project/.session-id"
+        - ".project/sessions/_tx/"
+        - ".project/sessions/_locks/"
+        - ".project/qa/evidence-snapshots/"
+        - ".project/qa/locks/"
+        - ".project/qa/score-history/"
