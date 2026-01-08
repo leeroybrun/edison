@@ -69,6 +69,8 @@ If the change is truly content-only (Markdown/YAML/templates) and no executable 
 # Expected: Test FAILS for the right reason (feature/behavior missing)
 ```
 
+**Evidence note:** failing RED runs are not “evidence”. Evidence capture is for *passing* command outputs that validators will trust.
+
 **RED Phase Checklist**:
 - [ ] Test written BEFORE implementation
 - [ ] Test fails when run (not skipped)
@@ -86,6 +88,11 @@ Write the MINIMUM code needed to make the test pass.
 # Expected: Test PASSES
 ```
 
+**After GREEN (when passing), capture reusable evidence** (so others can reuse results when the repo fingerprint hasn’t changed):
+```bash
+edison evidence capture <task-id> --only test
+```
+
 **GREEN Phase Checklist**:
 - [ ] Implementation makes test pass
 - [ ] No extra code beyond what's needed
@@ -99,6 +106,12 @@ Improve code quality while keeping tests passing.
 ```bash
 {{fn:ci_command("test")}}
 # Expected: ALL tests still PASS
+```
+
+**After REFACTOR (when passing), refresh evidence if needed**:
+```bash
+edison evidence status <task-id>          # See what’s required/missing
+edison evidence capture <task-id>         # Capture preset-required evidence (may reuse snapshot)
 ```
 
 **REFACTOR Phase Checklist**:
@@ -276,5 +289,4 @@ Return:
 `)
 ```
 <!-- /section: orchestrator-verify -->
-
 

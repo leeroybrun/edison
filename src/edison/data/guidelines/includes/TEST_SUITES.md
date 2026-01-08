@@ -14,6 +14,10 @@ Edison’s tests are divided into two practical suites:
 - For tight iteration loops (RED/GREEN): run **fast**.
 - Before handoff or when touching cross-cutting behavior (session/task/worktree/evidence/composition/config loading): run **slow**.
 
+**Evidence-first note (important):**
+- These commands are great for local iteration, but validation evidence should be captured via `edison evidence capture <task-id>` and reviewed via `edison evidence status <task-id>`.
+- Evidence capture is snapshot-based (repo fingerprint). If a complete, passing snapshot already exists for the current repo state, Edison can reuse it without re-running long suites.
+
 Convenience wrappers (preferred):
 ```bash
 scripts/test-fast
@@ -52,4 +56,3 @@ Do not call `git init` ad-hoc inside tests; use `TestGitRepo`/fixtures so the su
 - `scripts/test-fast` and `scripts/test-slow` run with `-n auto --dist loadfile` when `pytest-xdist` is installed.
 - Tests must not write shared paths (repo root, fixed `/tmp/...` paths) without per-test isolation (`tmp_path`, per-test dirs).
 <!-- /section: parallelism -->
-

@@ -178,3 +178,60 @@ def test_worktree_enforcement_is_archive_aware(
     assert payload.get("error") == "worktree_enforcement"
     assert payload.get("sessionId") == "sess-arch"
     assert payload.get("archivedWorktreePath") == str(archived_path.resolve())
+
+
+def test_worktree_enforcement_blocks_evidence_capture_outside_worktree_for_session_scoped_task(
+    isolated_project_env: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Evidence capture must run in the session worktree to avoid stale snapshots."""
+    cfg_dir = isolated_project_env / ".edison" / "config"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    (cfg_dir / "worktrees.yml").write_text(
+        yaml.safe_dump(
+            {
+                "worktrees": {
+                    "enabled": True,
+                    "baseBranchMode": "current",
+                    "baseBranch": None,
+                    "baseDirectory": str(tmp_path / "worktrees"),
+                    "archiveDirectory": str(tmp_path / "worktrees" / "_archived"),
+                    "branchPrefix": "session/",
+                    "enforcement": {"enabled": True, "commands": ["evidence capture"]},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    from helpers.cache_utils import reset_edison_caches
+
+    reset_edison_caches()
+
+    from edison.cli._dispatcher import main as cli_main
+
+    code = cli_main(["session", "create", "--session-id", "sess-evidence", "--owner", "tester", "--json"])
+    assert code == 0
+    created = json.loads(capsys.readouterr().out or "{}")
+    wt = ((created.get("session") or {}).get("git") or {}).get("worktreePath")
+    assert isinstance(wt, str) and wt
+
+    # Create a session-scoped task file (outside the worktree).
+    session_tasks = isolated_project_env / ".project" / "sessions" / "wip" / "sess-evidence" / "tasks" / "wip"
+    session_tasks.mkdir(parents=True, exist_ok=True)
+    (session_tasks / "T-SESSION.md").write_text(
+        "---\n"
+        "id: T-SESSION\n"
+        "title: Evidence worktree enforcement\n"
+        "session_id: sess-evidence\n"
+        "---\n\n"
+        "Test task.\n",
+        encoding="utf-8",
+    )
+
+    # From the primary checkout, evidence capture should be blocked.
+    code2 = cli_main(["evidence", "capture", "T-SESSION", "--json"])
+    assert code2 == 2
+    payload = json.loads(capsys.readouterr().out or "{}")
+    assert payload.get("error") == "worktree_enforcement"
+    assert payload.get("command") == "evidence capture"
+    assert payload.get("sessionId") == "sess-evidence"

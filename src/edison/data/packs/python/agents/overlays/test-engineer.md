@@ -15,14 +15,14 @@ overlay_type: extend
 # Run with coverage
 {{fn:ci_command("test-coverage")}}
 
-# Run specific test file
+# Tight iteration (TDD loop): run the smallest relevant scope
 pytest tests/unit/test_module.py -v
-
-# Run tests matching pattern
 pytest -k "test_create" -v
-
-# Run only marked tests
 pytest -m "not slow" -v
+
+# Reusable validation evidence (snapshot-based; reused when repo fingerprint unchanged)
+edison evidence status <task-id>
+edison evidence capture <task-id> --only test
 
 # Run with verbose output
 pytest tests/ -v --tb=long

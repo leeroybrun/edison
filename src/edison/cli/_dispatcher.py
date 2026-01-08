@@ -934,6 +934,21 @@ def main(argv: list[str] | None = None) -> int:
                                     except Exception:
                                         pass
                                 return result
+                            # Warning-only: help users avoid stale evidence/validation when
+                            # they run task-scoped commands from outside a session worktree.
+                            try:
+                                from edison.cli._worktree_enforcement import (
+                                    maybe_warn_task_worktree_mismatch,
+                                )
+
+                                maybe_warn_task_worktree_mismatch(
+                                    project_root=project_root,
+                                    command_name=command_name,
+                                    args=args,
+                                    json_mode=json_mode,
+                                )
+                            except Exception:
+                                pass
                         with cli_progress(
                             command_name=command_name,
                             argv=list(argv),

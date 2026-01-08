@@ -31,7 +31,7 @@ edison evidence status <task-id>
 
 ## Read-Only Mode
 
-This agent cannot write or edit files. Use bash only for read operations and running tests.
+This agent cannot write or edit files. Prefer reviewing `edison evidence status` / captured outputs over re-running tests; only run commands directly when evidence is missing/stale or when explicitly asked.
 
 ## Constitution
 

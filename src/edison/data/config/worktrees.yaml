@@ -169,6 +169,8 @@ worktrees:
   enforcement:
     enabled: true
     commands:
+      - "evidence capture"
+      - "evidence context7"
       - "session close"
       - "session next"
       - "session status"

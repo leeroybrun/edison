@@ -50,6 +50,14 @@ def is_mutating_invocation(command_name: str, args: argparse.Namespace) -> bool:
     if command_name == "qa promote":
         return True
 
+    # evidence capture: writes snapshot evidence files.
+    if command_name == "evidence capture":
+        return True
+
+    # evidence context7: template/list are read-only; save writes marker files.
+    if command_name == "evidence context7":
+        return str(getattr(args, "subcommand", "") or "") == "save"
+
     # session validate: currently read-only unless explicitly tracking scores.
     if command_name == "session validate":
         return bool(getattr(args, "track_scores", False))

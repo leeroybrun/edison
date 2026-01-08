@@ -17,7 +17,7 @@
 - Commit when meaningful or at checkpoint boundaries (not on every file change).
 
 ## Do/Don’t
-- Do: verify authorship, run tests/lint before commit.
+- Do: verify authorship, ensure checks pass before commit (prefer `edison evidence status/capture` when using Edison evidence workflows).
 - Don’t: amend others’ commits; push failing builds.
 
 ## Git-Optional vs Git-Required (Edison Core)
