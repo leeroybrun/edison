@@ -572,3 +572,202 @@ class TestVerifyDetectsUnloggedChanges:
         assert health["ok"] is False, (
             "Health should be not OK when unlogged changes are detected"
         )
+
+
+class TestVerifyHandlesSymlinkedProject:
+    """Test that verification correctly handles symlinked .project/ directories.
+
+    In Edison's meta-worktree layout, `.project/` is often a symlink to an external
+    `_meta` directory. The verification code must handle this case without raising
+    ValueError when calling relative_to() after symlink resolution.
+    """
+
+    def test_symlinked_project_dir_does_not_raise_value_error(
+        self, isolated_project_env: Path, monkeypatch
+    ):
+        """Verification should handle symlinked .project/ without ValueError.
+
+        Scenario:
+        1. Create a project with a symlinked .project/ directory
+        2. Create entity files under the symlinked directory
+        3. verify_entity_file should not raise ValueError when resolving paths
+        """
+        from edison.core.audit.verification import verify_entity_file, read_audit_log
+
+        project_root = isolated_project_env
+
+        # Create an external directory to simulate _meta worktree
+        external_meta = project_root.parent / "_meta_external"
+        external_meta.mkdir(parents=True, exist_ok=True)
+
+        # Create sessions directory in the external location
+        sessions_dir = external_meta / "sessions" / "wip" / "test-session" / "tasks" / "todo"
+        sessions_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create a task file in the external directory
+        task_file = sessions_dir / "001-test-task.md"
+        task_file.write_text(
+            "---\nid: 001-test-task\ntitle: Test Task\nstate: todo\n---\n# Test Task\n",
+            encoding="utf-8",
+        )
+
+        # Create symlink .project -> external_meta
+        project_dir = project_root / ".project"
+        if project_dir.exists():
+            # Remove existing .project (created by fixture)
+            import shutil
+            if project_dir.is_symlink():
+                project_dir.unlink()
+            else:
+                shutil.rmtree(project_dir)
+        project_dir.symlink_to(external_meta)
+
+        # Enable audit logging
+        logging_config = project_root / ".edison" / "config" / "logging.yaml"
+        logging_config.parent.mkdir(parents=True, exist_ok=True)
+        logging_config.write_text(
+            "logging:\n"
+            "  enabled: true\n"
+            "  audit:\n"
+            "    enabled: true\n"
+            "    path: .project/audit/audit.jsonl\n",
+            encoding="utf-8",
+        )
+
+        # Create audit log with a dummy event
+        audit_dir = external_meta / "audit"
+        audit_dir.mkdir(parents=True, exist_ok=True)
+        audit_log = audit_dir / "audit.jsonl"
+        import time
+        from datetime import datetime, timezone
+        ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        audit_log.write_text(
+            f'{{"event": "task.create", "task_id": "001-test-task", "ts": "{ts}"}}\n',
+            encoding="utf-8",
+        )
+
+        # Simulate that task was modified AFTER the audit event
+        time.sleep(1.5)
+        task_file.write_text(
+            "---\nid: 001-test-task\ntitle: Tampered Task\nstate: todo\n---\n# Tampered\n",
+            encoding="utf-8",
+        )
+
+        # Get the task path through the symlink
+        task_path_via_symlink = project_root / ".project" / "sessions" / "wip" / "test-session" / "tasks" / "todo" / "001-test-task.md"
+
+        # Read audit log
+        audit_events = read_audit_log(project_root)
+        assert len(audit_events) > 0, "Should have audit events"
+
+        # This should NOT raise ValueError even though the file is in a symlinked directory
+        # that resolves outside project_root
+        try:
+            result = verify_entity_file(
+                project_root=project_root,
+                entity_type="task",
+                entity_id="001-test-task",
+                file_path=task_path_via_symlink,
+                audit_events=audit_events,
+            )
+            # If we get here, no exception was raised - good!
+            # The result should be an UnloggedChange since we tampered
+            assert result is not None, (
+                "Should detect the unlogged change even with symlinked directory"
+            )
+            assert result.entity_id == "001-test-task"
+            assert "Task" in result.file_path or "001-test-task" in result.file_path.lower() or ".project" in result.file_path, (
+                f"File path should be meaningful, got: {result.file_path}"
+            )
+        except ValueError as e:
+            # This is the bug we're fixing - should not happen
+            pytest.fail(
+                f"verify_entity_file raised ValueError with symlinked .project/: {e}"
+            )
+
+    def test_symlinked_evidence_dir_does_not_raise_value_error(
+        self, isolated_project_env: Path, monkeypatch
+    ):
+        """Evidence verification should handle symlinked .project/ without ValueError."""
+        from edison.core.audit.verification import verify_entity_file, read_audit_log
+
+        project_root = isolated_project_env
+
+        # Create an external directory to simulate _meta worktree
+        external_meta = project_root.parent / "_meta_external_evidence"
+        external_meta.mkdir(parents=True, exist_ok=True)
+
+        # Create evidence directory in the external location
+        evidence_dir = external_meta / "qa" / "validation-reports" / "001-test-task" / "round-1"
+        evidence_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create an evidence file
+        evidence_file = evidence_dir / "test-output.txt"
+        evidence_file.write_text("exitCode: 0\noutput: Original output\n", encoding="utf-8")
+
+        # Create symlink .project -> external_meta
+        project_dir = project_root / ".project"
+        if project_dir.exists():
+            import shutil
+            if project_dir.is_symlink():
+                project_dir.unlink()
+            else:
+                shutil.rmtree(project_dir)
+        project_dir.symlink_to(external_meta)
+
+        # Enable audit logging
+        logging_config = project_root / ".edison" / "config" / "logging.yaml"
+        logging_config.parent.mkdir(parents=True, exist_ok=True)
+        logging_config.write_text(
+            "logging:\n"
+            "  enabled: true\n"
+            "  audit:\n"
+            "    enabled: true\n"
+            "    path: .project/audit/audit.jsonl\n",
+            encoding="utf-8",
+        )
+
+        # Create audit log with an evidence write event
+        audit_dir = external_meta / "audit"
+        audit_dir.mkdir(parents=True, exist_ok=True)
+        audit_log = audit_dir / "audit.jsonl"
+        import time
+        from datetime import datetime, timezone
+        ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        audit_log.write_text(
+            f'{{"event": "evidence.write", "task_id": "001-test-task", "file": ".project/qa/validation-reports/001-test-task/round-1/test-output.txt", "ts": "{ts}"}}\n',
+            encoding="utf-8",
+        )
+
+        # Simulate that evidence was modified AFTER the audit event
+        time.sleep(1.5)
+        evidence_file.write_text("exitCode: 0\noutput: Tampered output\n", encoding="utf-8")
+
+        # Get the evidence path through the symlink
+        evidence_path_via_symlink = project_root / ".project" / "qa" / "validation-reports" / "001-test-task" / "round-1" / "test-output.txt"
+
+        # Read audit log
+        audit_events = read_audit_log(project_root)
+        assert len(audit_events) > 0, "Should have audit events"
+
+        # This should NOT raise ValueError
+        try:
+            result = verify_entity_file(
+                project_root=project_root,
+                entity_type="evidence",
+                entity_id="001-test-task",
+                file_path=evidence_path_via_symlink,
+                audit_events=audit_events,
+            )
+            # If we get here, no exception was raised - good!
+            # The result should be an UnloggedChange since we tampered
+            assert result is not None, (
+                "Should detect the unlogged change even with symlinked directory"
+            )
+            assert "test-output" in result.file_path.lower() or ".project" in result.file_path, (
+                f"File path should be meaningful, got: {result.file_path}"
+            )
+        except ValueError as e:
+            pytest.fail(
+                f"verify_entity_file raised ValueError with symlinked .project/: {e}"
+            )

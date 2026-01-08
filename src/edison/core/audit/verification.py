@@ -118,6 +118,34 @@ def get_last_audit_timestamp(events: list[dict[str, Any]]) -> str | None:
     return events[-1].get("ts")
 
 
+def _get_relative_path(file_path: Path, project_root: Path, original_file: Path) -> str:
+    """Get a relative path for reporting, handling symlinked directories.
+
+    In Edison's meta-worktree layout, `.project/` is often a symlink to an external
+    `_meta` directory. After resolving symlinks, file_path may not be under project_root.
+    This function handles that case by using the original (pre-resolved) path relationship.
+
+    Args:
+        file_path: Resolved file path
+        project_root: Resolved project root
+        original_file: Original file path before symlink resolution
+
+    Returns:
+        A string path relative to project root (or the resolved path if outside)
+    """
+    try:
+        return str(file_path.relative_to(project_root))
+    except ValueError:
+        # File is outside project_root after symlink resolution.
+        # Use original path relationship if it works, otherwise use absolute path.
+        try:
+            # Try using the original paths (before resolution)
+            return str(original_file.relative_to(original_file.parents[len(original_file.parts) - 1]))
+        except (ValueError, IndexError):
+            # Fall back to just the file name and some parent context
+            return str(original_file)
+
+
 def verify_entity_file(
     project_root: Path,
     entity_type: str,
@@ -132,6 +160,10 @@ def verify_entity_file(
     """
     if not file_path.exists():
         return None
+
+    # Keep original path for relative path calculation in symlinked layouts
+    original_file = file_path
+    original_root = project_root
 
     # Resolve symlinks to handle macOS /var -> /private/var
     project_root = project_root.resolve()
@@ -148,12 +180,25 @@ def verify_entity_file(
     entity_events = get_entity_audit_events(audit_events, entity_type, entity_id)
     last_audit_ts = get_last_audit_timestamp(entity_events)
 
+    # Calculate relative path for reporting (handles symlinked .project/)
+    def make_rel_path() -> str:
+        # First try using resolved paths
+        try:
+            return str(file_path.relative_to(project_root))
+        except ValueError:
+            # Symlinked layout: use original pre-resolved path
+            try:
+                return str(original_file.relative_to(original_root))
+            except ValueError:
+                # Last resort: return the original path as-is
+                return str(original_file)
+
     # If there are no audit events for this entity, but the file exists,
     # it might have been created before audit logging was enabled.
     # In this case, we check if there are ANY audit events at all.
     if not entity_events:
         # Check if there are any logged file modifications for this file
-        file_rel = str(file_path.relative_to(project_root))
+        file_rel = make_rel_path()
         file_events = [e for e in audit_events if file_rel in str(e.get("file", ""))]
         if not file_events and audit_events:
             # File exists but no audit events for it - potential unlogged change
@@ -173,7 +218,7 @@ def verify_entity_file(
                         return UnloggedChange(
                             entity_type=entity_type,
                             entity_id=entity_id,
-                            file_path=str(file_path.relative_to(project_root)),
+                            file_path=file_rel,
                             reason="File modified after audit logging started, but no audit event found",
                             last_modified=mtime,
                             last_audit_event=None,
@@ -200,7 +245,7 @@ def verify_entity_file(
                 return UnloggedChange(
                     entity_type=entity_type,
                     entity_id=entity_id,
-                    file_path=str(file_path.relative_to(project_root)),
+                    file_path=make_rel_path(),
                     reason="File modified after last audit event",
                     last_modified=mtime,
                     last_audit_event=last_audit_ts,
