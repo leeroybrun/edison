@@ -54,23 +54,64 @@ def _check_required_fields(config: dict) -> List[Tuple[str, str]]:
 def _check_consistency(config: dict) -> List[Tuple[str, str]]:
     """Check for configuration consistency issues."""
     issues: List[Tuple[str, str]] = []
-    
+
     # Check worktrees configuration
     worktrees = config.get("worktrees", {})
     if worktrees.get("enabled"):
         if not worktrees.get("baseDirectory"):
             issues.append(("warning", "worktrees.enabled but baseDirectory not set"))
-    
-    # Check database configuration  
+
+    # Check database configuration
     database = config.get("database", {})
     if database.get("enabled") and not database.get("url"):
         issues.append(("error", "database.enabled but database.url not set"))
-    
+
     # Check TDD configuration
     tdd = config.get("tdd", {})
     if tdd.get("enforceRedGreenRefactor") and not tdd.get("requireEvidence"):
         issues.append(("warning", "TDD enforcement enabled but evidence not required"))
-    
+
+    return issues
+
+
+def _check_validator_config(config: dict) -> List[Tuple[str, str]]:
+    """Check validator configuration for common misconfigurations.
+
+    Rejects validators that use `triggers: ["*"]` with `always_run: false`.
+    This is a configuration footgun - wildcards should not be used to simulate
+    "always required" behavior. Use `always_run: true` instead.
+
+    Args:
+        config: Full configuration dict
+
+    Returns:
+        List of (level, message) tuples for issues found
+    """
+    issues: List[Tuple[str, str]] = []
+
+    validation = config.get("validation", {})
+    if not validation:
+        return issues
+
+    validators = validation.get("validators", {})
+    if not validators or not isinstance(validators, dict):
+        return issues
+
+    for validator_id, validator_cfg in validators.items():
+        if not isinstance(validator_cfg, dict):
+            continue
+
+        triggers = validator_cfg.get("triggers", [])
+        always_run = validator_cfg.get("always_run", False)
+
+        # Check for wildcard trigger with always_run=false
+        if isinstance(triggers, list) and "*" in triggers and not always_run:
+            issues.append((
+                "error",
+                f"Validator '{validator_id}' has triggers: [\"*\"] with always_run: false. "
+                f"Use `always_run: true` instead, or narrow triggers to specific patterns."
+            ))
+
     return issues
 
 
@@ -101,6 +142,7 @@ def main(args: argparse.Namespace) -> int:
         # Run additional checks
         issues.extend(_check_required_fields(config))
         issues.extend(_check_consistency(config))
+        issues.extend(_check_validator_config(config))
         
         # Report issues
         errors = [msg for level, msg in issues if level == "error"]
