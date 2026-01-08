@@ -32,13 +32,14 @@ def resolve_web_server_config(
     validation = full_config.get("validation") or {}
     defaults = {}
     if isinstance(validation, dict):
-        defaults = ((validation.get("defaults") or {}).get("web_server") or {}) if isinstance(validation.get("defaults"), dict) else {}
+        defaults_dict = validation.get("defaults") if isinstance(validation.get("defaults"), dict) else {}
+        defaults = ((defaults_dict.get("web_server") or defaults_dict.get("webServer") or {}) if isinstance(defaults_dict, dict) else {})
     if not isinstance(defaults, dict):
         defaults = {}
 
     profiles = {}
     if isinstance(validation, dict):
-        profiles = validation.get("web_servers") or {}
+        profiles = validation.get("web_servers") or validation.get("webServers") or {}
     if not isinstance(profiles, dict):
         profiles = {}
 
@@ -60,4 +61,3 @@ def resolve_web_server_config(
 
 
 __all__ = ["resolve_web_server_config"]
-

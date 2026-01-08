@@ -146,13 +146,20 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
     def default_timeout(self) -> int:
         """Get the default per-validator timeout in seconds.
 
-        Reads from validation.execution.timeout (preferred) and fails closed to 1500s.
+        Reads from validation.execution.timeout (preferred), falls back to validation.timeout,
+        and fails closed to 1500s.
         """
         if self._default_timeout is None:
             config = self._load_config()
             validation_cfg = config.get("validation", {}) or {}
             execution = validation_cfg.get("execution", {}) if isinstance(validation_cfg, dict) else {}
-            raw = execution.get("timeout", 1500) if isinstance(execution, dict) else 1500
+            raw = None
+            if isinstance(execution, dict):
+                raw = execution.get("timeout")
+            if raw is None and isinstance(validation_cfg, dict):
+                raw = validation_cfg.get("timeout")
+            if raw is None:
+                raw = 1500
             try:
                 self._default_timeout = int(raw)
             except Exception:

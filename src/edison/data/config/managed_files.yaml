@@ -12,7 +12,9 @@ managed_files:
       ensure_lines:
         - ".worktrees/"
         - ".edison/_generated/"
+        - ".edison/_locks/"
         - ".edison/config.local/"
+        - ".edison/session/"
         # Meta-managed state is committable; ignore only runtime-only subtrees.
         - ".project/logs/"
         - ".project/archive/"

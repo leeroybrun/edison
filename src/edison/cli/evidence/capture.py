@@ -26,7 +26,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "--only",
         action="append",
         default=[],
-        help="Run only these command(s) (repeatable, or comma-separated). Example: --only test --only lint",
+        help=(
+            "Run only these command(s) (repeatable, or comma-separated). Intended for targeted reruns; it may NOT "
+            "satisfy the task's preset-required evidence. Verify with `edison evidence status <task-id>`. "
+            "Example: --only test --only lint"
+        ),
     )
     parser.add_argument(
         "--all",
@@ -227,7 +231,7 @@ def main(args: argparse.Namespace) -> int:
         ]
         snap = snapshot_status(project_root=project_root, key=key, required_files=required_files_for_run)
         reuse_ok = bool(snap.get("complete")) and bool(snap.get("passed")) and bool(snap.get("valid"))
-        if reuse_ok and not force and not only:
+        if reuse_ok and not force:
             payload: dict[str, Any] = {
                 "taskId": task_id,
                 "preset": resolved_preset,
@@ -237,14 +241,53 @@ def main(args: argparse.Namespace) -> int:
                 "requiredFiles": required_files_for_run,
                 "status": snap,
                 "commands": [],
+                "mode": (
+                    "only"
+                    if only
+                    else ("all" if run_all else ("session-close" if session_close else ("preset" if preset_name else "required")))
+                ),
             }
+
+            preset_status: dict[str, Any] | None = None
+            try:
+                preset_status = get_command_evidence_status(
+                    project_root=project_root,
+                    task_id=task_id,
+                    preset_name=resolved_preset,
+                )
+            except Exception:
+                preset_status = None
+            if preset_status is not None:
+                payload["presetEvidenceStatus"] = preset_status
+
             if formatter.json_mode:
                 formatter.json_output(payload)
             else:
+                mode_label = payload.get("mode") or "required"
+                preset_label = f", preset={resolved_preset}" if resolved_preset else ""
                 formatter.text(
                     f"Reused existing evidence snapshot for current repo fingerprint: {snap_dir.relative_to(project_root)}"
                 )
+                formatter.text(f"(mode={mode_label}{preset_label})")
                 formatter.text("To force re-run: edison evidence capture <task> --force")
+
+                if preset_status is not None and not bool(preset_status.get("success", False)):
+                    missing_files = preset_status.get("missing") or []
+                    missing_cmds = preset_status.get("missingCommands") or []
+                    if missing_files:
+                        formatter.text("")
+                        formatter.text("Note: the current snapshot still does NOT satisfy the preset's required command evidence.")
+                        formatter.text(f"- Missing: {', '.join([str(x) for x in missing_files])}")
+                        if missing_cmds:
+                            formatter.text(
+                                "- Fix: "
+                                + " ".join(
+                                    ["edison evidence capture", task_id, "--only", ",".join([str(c) for c in missing_cmds])]
+                                )
+                            )
+                        else:
+                            formatter.text(f"- Fix: edison evidence capture {task_id}")
+
             return 0
 
         for cmd_name, cmd_string in ci_commands.items():

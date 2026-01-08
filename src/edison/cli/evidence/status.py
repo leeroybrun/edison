@@ -19,6 +19,10 @@ SUMMARY = "Check evidence completeness and command success"
 
 def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("task_id", help="Task identifier")
+    parser.add_argument(
+        "--preset",
+        help="Explicit validation preset name to use for required-evidence resolution (default: inferred for the task).",
+    )
     add_json_flag(parser)
     add_repo_root_flag(parser)
 
@@ -32,7 +36,12 @@ def main(args: argparse.Namespace) -> int:
 
         from edison.core.qa.evidence.command_status import get_command_evidence_status
 
-        payload = get_command_evidence_status(project_root=project_root, task_id=task_id, preset_name=None)
+        preset_name = getattr(args, "preset", None)
+        payload = get_command_evidence_status(
+            project_root=project_root,
+            task_id=task_id,
+            preset_name=str(preset_name).strip() if preset_name else None,
+        )
         success = bool(payload.get("success"))
 
         if formatter.json_mode:
