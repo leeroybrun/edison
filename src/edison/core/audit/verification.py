@@ -82,8 +82,21 @@ def get_entity_audit_events(
     events: list[dict[str, Any]],
     entity_type: str,
     entity_id: str,
+    file_path: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Get audit events relevant to a specific entity."""
+    """Get audit events relevant to a specific entity.
+
+    Args:
+        events: List of audit events to search
+        entity_type: Type of entity ("task", "qa", "session", "evidence")
+        entity_id: ID of the entity (task_id for evidence)
+        file_path: For evidence type, the specific file path to match.
+                   If provided, only events for this exact file are returned.
+                   If None, all evidence events for the task_id are returned.
+
+    Returns:
+        List of matching audit events, sorted by timestamp.
+    """
     relevant: list[dict[str, Any]] = []
     for event in events:
         event_name = event.get("event", "")
@@ -104,9 +117,24 @@ def get_entity_audit_events(
                 if "session" in event_name.lower():
                     relevant.append(event)
         elif entity_type == "evidence":
-            if event.get("task_id") == entity_id or entity_id in str(event.get("file", "")):
-                if "evidence" in event_name.lower():
-                    relevant.append(event)
+            if "evidence" in event_name.lower():
+                # For evidence, prefer exact file path match if provided
+                if file_path is not None:
+                    event_file = event.get("file", "")
+                    # Match if the event file path matches the target file
+                    # Support both relative and absolute paths
+                    if event_file and (
+                        event_file == file_path
+                        or file_path.endswith(event_file)
+                        or event_file.endswith(file_path)
+                        or Path(event_file).name == Path(file_path).name
+                        and entity_id in event_file
+                    ):
+                        relevant.append(event)
+                else:
+                    # Fall back to task_id match only (less precise)
+                    if event.get("task_id") == entity_id:
+                        relevant.append(event)
 
     return relevant
 
@@ -176,10 +204,6 @@ def verify_entity_file(
 
     current_hash = compute_file_hash(file_path)
 
-    # Get relevant audit events for this entity
-    entity_events = get_entity_audit_events(audit_events, entity_type, entity_id)
-    last_audit_ts = get_last_audit_timestamp(entity_events)
-
     # Calculate relative path for reporting (handles symlinked .project/)
     def make_rel_path() -> str:
         # First try using resolved paths
@@ -193,12 +217,23 @@ def verify_entity_file(
                 # Last resort: return the original path as-is
                 return str(original_file)
 
+    file_rel = make_rel_path()
+
+    # Get relevant audit events for this entity
+    # For evidence files, pass the file path to match events for this specific file
+    if entity_type == "evidence":
+        entity_events = get_entity_audit_events(
+            audit_events, entity_type, entity_id, file_path=file_rel
+        )
+    else:
+        entity_events = get_entity_audit_events(audit_events, entity_type, entity_id)
+    last_audit_ts = get_last_audit_timestamp(entity_events)
+
     # If there are no audit events for this entity, but the file exists,
     # it might have been created before audit logging was enabled.
     # In this case, we check if there are ANY audit events at all.
     if not entity_events:
         # Check if there are any logged file modifications for this file
-        file_rel = make_rel_path()
         file_events = [e for e in audit_events if file_rel in str(e.get("file", ""))]
         if not file_events and audit_events:
             # File exists but no audit events for it - potential unlogged change
@@ -245,7 +280,7 @@ def verify_entity_file(
                 return UnloggedChange(
                     entity_type=entity_type,
                     entity_id=entity_id,
-                    file_path=make_rel_path(),
+                    file_path=file_rel,
                     reason="File modified after last audit event",
                     last_modified=mtime,
                     last_audit_event=last_audit_ts,

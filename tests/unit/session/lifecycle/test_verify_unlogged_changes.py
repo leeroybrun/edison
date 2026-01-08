@@ -771,3 +771,109 @@ class TestVerifyHandlesSymlinkedProject:
             pytest.fail(
                 f"verify_entity_file raised ValueError with symlinked .project/: {e}"
             )
+
+
+class TestEvidencePerFileDetection:
+    """Test that evidence tampering detection is per-file, not per-task.
+
+    Critical security property: tampering an earlier evidence file after a later
+    evidence file is logged MUST be detected. Each evidence file's mtime should
+    be compared against the audit event for THAT specific file, not the last
+    event for the entire task.
+    """
+
+    def test_detects_tampering_of_earlier_file_after_later_file_logged(
+        self, isolated_project_env: Path, monkeypatch
+    ):
+        """Tampering file A after file B's audit event should be detected.
+
+        Scenario:
+        1. Write evidence file A, emit audit event for A
+        2. Write evidence file B, emit audit event for B
+        3. Tamper file A (modify it after B's audit event)
+        4. verify_entity_file should detect tampering of A
+
+        Before the fix: A's mtime would be compared to B's audit event,
+        so tampering would be missed if A's mtime < B's audit time.
+
+        After the fix: A's mtime is compared to A's audit event specifically,
+        so tampering is detected.
+        """
+        from edison.core.audit.verification import verify_entity_file, read_audit_log
+        from edison.core.audit.logger import audit_event
+
+        project_root = isolated_project_env
+
+        # Enable audit logging
+        logging_config = project_root / ".edison" / "config" / "logging.yaml"
+        logging_config.parent.mkdir(parents=True, exist_ok=True)
+        logging_config.write_text(
+            "logging:\n"
+            "  enabled: true\n"
+            "  audit:\n"
+            "    enabled: true\n"
+            "    path: .project/audit/audit.jsonl\n",
+            encoding="utf-8",
+        )
+
+        # Create evidence directory
+        evidence_dir = project_root / ".project" / "qa" / "validation-reports" / "001-test-task" / "round-1"
+        evidence_dir.mkdir(parents=True, exist_ok=True)
+
+        # Step 1: Write evidence file A and emit audit event
+        file_a = evidence_dir / "file-a.txt"
+        file_a.write_text("Original content A\n", encoding="utf-8")
+        audit_event(
+            "evidence.write",
+            repo_root=project_root,
+            task_id="001-test-task",
+            file=".project/qa/validation-reports/001-test-task/round-1/file-a.txt",
+        )
+
+        import time
+        time.sleep(1.5)  # Ensure time separation
+
+        # Step 2: Write evidence file B and emit audit event
+        file_b = evidence_dir / "file-b.txt"
+        file_b.write_text("Original content B\n", encoding="utf-8")
+        audit_event(
+            "evidence.write",
+            repo_root=project_root,
+            task_id="001-test-task",
+            file=".project/qa/validation-reports/001-test-task/round-1/file-b.txt",
+        )
+
+        time.sleep(1.5)  # Ensure time separation
+
+        # Step 3: Tamper file A (after B's audit event)
+        file_a.write_text("Tampered content A\n", encoding="utf-8")
+
+        # Step 4: Verify that tampering of A is detected
+        audit_events = read_audit_log(project_root)
+        assert len(audit_events) >= 2, "Should have at least 2 audit events"
+
+        result = verify_entity_file(
+            project_root=project_root,
+            entity_type="evidence",
+            entity_id="001-test-task",
+            file_path=file_a,
+            audit_events=audit_events,
+        )
+
+        # This is the critical assertion: tampering of file A should be detected
+        # even though file B's audit event came later
+        assert result is not None, (
+            "Tampering of file A should be detected even though file B's event is more recent"
+        )
+        assert result.entity_type == "evidence"
+        assert "file-a" in result.file_path.lower() or "file_a" in result.file_path.lower()
+
+        # Verify file B is NOT flagged (it wasn't tampered)
+        result_b = verify_entity_file(
+            project_root=project_root,
+            entity_type="evidence",
+            entity_id="001-test-task",
+            file_path=file_b,
+            audit_events=audit_events,
+        )
+        assert result_b is None, "File B should not be flagged as it wasn't tampered"
