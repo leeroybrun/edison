@@ -800,11 +800,11 @@ class TestEvidencePerFileDetection:
         so tampering is detected.
         """
         from edison.core.audit.verification import verify_entity_file, read_audit_log
-        from edison.core.audit.logger import audit_event
+        from edison.core.audit.logger import audit_evidence_write
 
         project_root = isolated_project_env
 
-        # Enable audit logging
+        # Enable audit logging with tamper-evident evidence_writes enabled
         logging_config = project_root / ".edison" / "config" / "logging.yaml"
         logging_config.parent.mkdir(parents=True, exist_ok=True)
         logging_config.write_text(
@@ -812,7 +812,11 @@ class TestEvidencePerFileDetection:
             "  enabled: true\n"
             "  audit:\n"
             "    enabled: true\n"
-            "    path: .project/audit/audit.jsonl\n",
+            "    path: .project/audit/audit.jsonl\n"
+            "  tamperEvident:\n"
+            "    enabled: true\n"
+            "    evidenceWrites:\n"
+            "      enabled: true\n",
             encoding="utf-8",
         )
 
@@ -823,11 +827,12 @@ class TestEvidencePerFileDetection:
         # Step 1: Write evidence file A and emit audit event
         file_a = evidence_dir / "file-a.txt"
         file_a.write_text("Original content A\n", encoding="utf-8")
-        audit_event(
-            "evidence.write",
-            repo_root=project_root,
+        audit_evidence_write(
             task_id="001-test-task",
-            file=".project/qa/validation-reports/001-test-task/round-1/file-a.txt",
+            artifact_type="command",
+            path=".project/qa/validation-reports/001-test-task/round-1/file-a.txt",
+            round_num=1,
+            repo_root=project_root,
         )
 
         import time
@@ -836,11 +841,12 @@ class TestEvidencePerFileDetection:
         # Step 2: Write evidence file B and emit audit event
         file_b = evidence_dir / "file-b.txt"
         file_b.write_text("Original content B\n", encoding="utf-8")
-        audit_event(
-            "evidence.write",
-            repo_root=project_root,
+        audit_evidence_write(
             task_id="001-test-task",
-            file=".project/qa/validation-reports/001-test-task/round-1/file-b.txt",
+            artifact_type="command",
+            path=".project/qa/validation-reports/001-test-task/round-1/file-b.txt",
+            round_num=1,
+            repo_root=project_root,
         )
 
         time.sleep(1.5)  # Ensure time separation

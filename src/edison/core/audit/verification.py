@@ -120,15 +120,16 @@ def get_entity_audit_events(
             if "evidence" in event_name.lower():
                 # For evidence, prefer exact file path match if provided
                 if file_path is not None:
-                    event_file = event.get("file", "")
+                    # audit_evidence_write() uses 'path' key, but tests may use 'file'
+                    event_file = event.get("path", "") or event.get("file", "")
                     # Match if the event file path matches the target file
                     # Support both relative and absolute paths
                     if event_file and (
                         event_file == file_path
                         or file_path.endswith(event_file)
                         or event_file.endswith(file_path)
-                        or Path(event_file).name == Path(file_path).name
-                        and entity_id in event_file
+                        or (Path(event_file).name == Path(file_path).name
+                            and entity_id in event_file)
                     ):
                         relevant.append(event)
                 else:
@@ -234,7 +235,8 @@ def verify_entity_file(
     # In this case, we check if there are ANY audit events at all.
     if not entity_events:
         # Check if there are any logged file modifications for this file
-        file_events = [e for e in audit_events if file_rel in str(e.get("file", ""))]
+        # audit_evidence_write() uses 'path' key, but tests may use 'file'
+        file_events = [e for e in audit_events if file_rel in str(e.get("path", "") or e.get("file", ""))]
         if not file_events and audit_events:
             # File exists but no audit events for it - potential unlogged change
             # However, we need to be careful about files created before audit logging
