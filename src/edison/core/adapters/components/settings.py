@@ -76,6 +76,8 @@ class SettingsComposer(AdapterComponent):
 
         Uses ConfigManager's pack-aware loading for core > packs > project layering.
         All merging is handled by ConfigManager's unified deep_merge.
+
+        If tampering protection is enabled, adds deny rules for the protected directory.
         """
         # Get settings from ConfigManager (already merged core > packs > project)
         settings = self.load_merged_settings()
@@ -102,7 +104,53 @@ class SettingsComposer(AdapterComponent):
             data_block = settings.pop("data")
             settings = deep_merge(settings, data_block)
 
+        # Integrate tampering deny rules if enabled
+        settings = self._apply_tampering_deny_rules(settings)
+
         return settings
+
+    def _apply_tampering_deny_rules(self, settings: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply tampering protection deny rules to settings if enabled.
+
+        Args:
+            settings: The composed settings dictionary.
+
+        Returns:
+            Settings with tampering deny rules added if protection is enabled.
+        """
+        try:
+            from edison.core.config.domains import TamperingConfig
+            from .tampering import DenyRules
+
+            tampering_config = TamperingConfig(repo_root=self.project_root)
+            deny_rules = DenyRules.from_tampering_config(tampering_config)
+
+            if deny_rules.is_empty():
+                return settings
+
+            # Get deny permissions for Claude format
+            deny_permissions = deny_rules.to_claude_deny_permissions()
+
+            # Ensure permissions structure exists
+            if "permissions" not in settings:
+                settings["permissions"] = {}
+            if not isinstance(settings["permissions"], dict):
+                settings["permissions"] = {}
+            if "deny" not in settings["permissions"]:
+                settings["permissions"]["deny"] = []
+            if not isinstance(settings["permissions"]["deny"], list):
+                settings["permissions"]["deny"] = []
+
+            # Add tampering deny rules (deduped)
+            existing_deny = settings["permissions"]["deny"]
+            for perm in deny_permissions:
+                if perm not in existing_deny:
+                    existing_deny.append(perm)
+
+            return settings
+        except Exception:
+            # If tampering config fails to load, silently continue
+            return settings
 
     # AdapterComponent contract -------------------------------------------------
 

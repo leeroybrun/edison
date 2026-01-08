@@ -96,3 +96,32 @@ def test_tampering_enable_idempotent(tmp_path: Path) -> None:
     config_path = tmp_path / ".edison" / "config" / "tampering.yaml"
     config = yaml.safe_load(config_path.read_text())
     assert config["tampering"]["enabled"] is True
+
+
+def test_tampering_enable_triggers_settings_composition(tmp_path: Path) -> None:
+    """`edison tampering enable` should compose settings with deny rules."""
+    from edison.cli.tampering.enable import main, register_args
+
+    # Setup minimal Edison project structure with .claude dir
+    (tmp_path / ".edison" / "config").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".claude").mkdir(parents=True, exist_ok=True)
+
+    parser = argparse.ArgumentParser()
+    register_args(parser)
+    args = parser.parse_args(["--repo-root", str(tmp_path)])
+
+    exit_code = main(args)
+
+    assert exit_code == 0, f"Command failed with exit code {exit_code}"
+
+    # Verify settings.json was created with deny rules
+    settings_path = tmp_path / ".claude" / "settings.json"
+    assert settings_path.exists(), "settings.json was not created"
+
+    import json
+
+    settings = json.loads(settings_path.read_text())
+    deny = settings.get("permissions", {}).get("deny", [])
+
+    # Should have deny rules for protected directory
+    assert any("_protected" in p for p in deny), f"Expected deny rules for _protected, got: {deny}"

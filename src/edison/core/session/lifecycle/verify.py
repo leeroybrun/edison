@@ -43,6 +43,7 @@ def verify_session_health(session_id: str) -> dict[str, Any]:
             "bundleNotApproved": [],
             "bundleWrongPreset": [],
             "blockersOrReportsMissing": False,
+            "unloggedChanges": [],
         },
         "details": [],
     }
@@ -259,6 +260,33 @@ def verify_session_health(session_id: str) -> dict[str, Any]:
             health["details"].append({"kind": "blocker", "blocker": blocker})
         for report in plan.get("reportsMissing") or []:
             health["details"].append({"kind": "reportsMissing", "report": report})
+
+    # Detect unlogged changes (tamper-evident verification)
+    try:
+        from edison.core.audit.verification import detect_unlogged_changes
+
+        unlogged_changes = detect_unlogged_changes(
+            project_root=project_root,
+            session_id=session_id,
+            task_ids=list(session_task_ids),
+        )
+        for change in unlogged_changes:
+            health["categories"]["unloggedChanges"].append({
+                "entityType": change.entity_type,
+                "entityId": change.entity_id,
+                "file": change.file_path,
+                "reason": change.reason,
+                "mtime": change.last_modified,
+                "lastAuditEvent": change.last_audit_event,
+                "currentHash": change.current_hash,
+            })
+            failures.append(
+                f"Unlogged change detected: {change.entity_type} '{change.entity_id}' "
+                f"at {change.file_path} ({change.reason})"
+            )
+    except Exception:
+        # Fail-open: unlogged change detection is additive; do not block on errors
+        pass
 
     if failures:
         health["ok"] = False
