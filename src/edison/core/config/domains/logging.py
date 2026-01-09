@@ -177,6 +177,34 @@ class LoggingConfig(BaseDomainConfig):
         hooks = self.section.get("hooks") or {}
         return bool(hooks.get("enabled", True))
 
+    # -------------------------------------------------------------------------
+    # Tamper-evident logging configuration
+    # -------------------------------------------------------------------------
+
+    @cached_property
+    def tamper_evident_enabled(self) -> bool:
+        """Whether tamper-evident logging is enabled globally."""
+        te = self.section.get("tamperEvident") or {}
+        return bool(te.get("enabled", False))
+
+    @cached_property
+    def entity_transitions_enabled(self) -> bool:
+        """Whether to log entity state transitions."""
+        if not self.tamper_evident_enabled:
+            return False
+        te = self.section.get("tamperEvident") or {}
+        trans = te.get("entityTransitions") or {}
+        return bool(trans.get("enabled", True))
+
+    @cached_property
+    def evidence_writes_enabled(self) -> bool:
+        """Whether to log evidence write operations."""
+        if not self.tamper_evident_enabled:
+            return False
+        te = self.section.get("tamperEvident") or {}
+        writes = te.get("evidenceWrites") or {}
+        return bool(writes.get("enabled", True))
+
     @cached_property
     def _jsonl_paths(self) -> dict[str, Any]:
         audit = self.section.get("audit") or {}

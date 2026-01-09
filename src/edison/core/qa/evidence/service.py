@@ -225,6 +225,13 @@ class EvidenceService:
                 f"Failed to write bundle summary to {bundle_path}: {e}"
             ) from e
 
+        # Emit tamper-evident audit event for the write (fail-open)
+        self._audit_evidence_write(
+            artifact_type="bundle",
+            path=str(bundle_path),
+            round_num=rounds.get_round_number(round_dir),
+        )
+
     # -------------------------------------------------------------------------
     # Implementation Report I/O (SINGLE SOURCE)
     # -------------------------------------------------------------------------
@@ -281,6 +288,13 @@ class EvidenceService:
                 f"Failed to write implementation report to {report_path}: {e}"
             ) from e
 
+        # Emit tamper-evident audit event for the write (fail-open)
+        self._audit_evidence_write(
+            artifact_type="implementation_report",
+            path=str(report_path),
+            round_num=rounds.get_round_number(round_dir),
+        )
+
     def _load_implementation_report_template(self) -> str:
         """Load the composed implementation report template body (fallback to core)."""
         try:
@@ -330,6 +344,15 @@ class EvidenceService:
             # Keep EvidenceService as the user-facing exception boundary.
             raise EvidenceError(f"Failed to write validator report: {e}") from e
 
+        # Emit tamper-evident audit event for the write (fail-open)
+        report_path = reports.validator_report_path(round_dir, validator_name)
+        self._audit_evidence_write(
+            artifact_type="validator_report",
+            path=str(report_path),
+            round_num=rounds.get_round_number(round_dir),
+            validator_id=validator_name,
+        )
+
     def list_validator_reports(self, round_num: Optional[int] = None) -> List[Path]:
         """List all validator report files in a round.
 
@@ -337,6 +360,36 @@ class EvidenceService:
         """
         round_dir = self.ensure_round(round_num)
         return reports.list_validator_reports(round_dir)
+
+    # -------------------------------------------------------------------------
+    # Tamper-evident audit logging
+    # -------------------------------------------------------------------------
+
+    def _audit_evidence_write(
+        self,
+        artifact_type: str,
+        path: str,
+        round_num: int,
+        validator_id: Optional[str] = None,
+    ) -> None:
+        """Emit a tamper-evident audit event for an evidence write (fail-open).
+
+        This method is fail-open: it never raises exceptions or blocks evidence writes.
+        """
+        try:
+            from edison.core.audit.logger import audit_evidence_write
+
+            audit_evidence_write(
+                task_id=self.task_id,
+                artifact_type=artifact_type,
+                path=path,
+                round_num=round_num,
+                repo_root=self.project_root,
+                validator_id=validator_id,
+            )
+        except Exception:
+            # Audit logging is fail-open: never block evidence writes due to logging errors
+            pass
 
     # -------------------------------------------------------------------------
     # Metadata management

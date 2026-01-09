@@ -15,7 +15,7 @@ from ._args import (
     add_json_flag,
     add_repo_root_flag,
 )
-from ._output import OutputFormatter
+from ._output import OutputFormatter, add_format_flag, resolve_output_format
 from ._utils import (
     detect_record_type,
     format_display_path,
@@ -28,6 +28,8 @@ from ._utils import (
 __all__ = [
     # Output formatting
     "OutputFormatter",
+    "add_format_flag",
+    "resolve_output_format",
     # Argument helpers
     "add_json_flag",
     "add_repo_root_flag",

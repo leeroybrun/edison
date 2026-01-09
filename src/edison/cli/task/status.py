@@ -12,6 +12,7 @@ import sys
 
 from edison.cli import (
     OutputFormatter,
+    add_format_flag,
     add_json_flag,
     add_repo_root_flag,
     detect_record_type,
@@ -19,6 +20,7 @@ from edison.cli import (
     get_repo_root,
     get_repository,
     resolve_existing_task_id,
+    resolve_output_format,
     resolve_session_id,
 )
 
@@ -58,13 +60,15 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "--session",
         help="Session context (enforces isolation when transitioning session-scoped records)",
     )
-    add_json_flag(parser)
+    add_format_flag(parser, default="markdown")
+    add_json_flag(parser)  # Backwards compatibility
     add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Task status - delegates to core library using entity-based API."""
-    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+    output_format = resolve_output_format(args)
+    formatter = OutputFormatter(format=output_format)
 
     try:
         # Resolve project root

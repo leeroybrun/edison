@@ -115,4 +115,109 @@ def truncate_text(text: str, *, max_bytes: int) -> str:
     return clipped.decode("utf-8", errors="replace")
 
 
-__all__ = ["audit_event", "truncate_text"]
+# -------------------------------------------------------------------------
+# Tamper-evident logging for entity transitions
+# -------------------------------------------------------------------------
+
+
+def audit_entity_transition(
+    entity_type: str,
+    entity_id: str,
+    from_state: str,
+    to_state: str,
+    *,
+    repo_root: Path | None = None,
+    session_id: str | None = None,
+    reason: str | None = None,
+) -> None:
+    """Emit a tamper-evident audit event for an entity state transition.
+
+    This function emits an `entity.transition` event to the canonical audit log,
+    recording the old state, new state, entity type, and entity ID. This provides
+    an immutable, append-only log of all state transitions for forensics.
+
+    Args:
+        entity_type: The type of entity (e.g., 'task', 'qa', 'session')
+        entity_id: The unique identifier of the entity
+        from_state: The previous state
+        to_state: The new state
+        repo_root: Optional repository root for config resolution
+        session_id: Optional session ID for context
+        reason: Optional reason for the transition
+    """
+    root = _best_effort_repo_root(repo_root)
+    if root is None:
+        return
+
+    try:
+        cfg = LoggingConfig(repo_root=root)
+    except Exception:
+        return
+
+    if not cfg.enabled or not cfg.audit_enabled or not cfg.entity_transitions_enabled:
+        return
+
+    audit_event(
+        "entity.transition",
+        repo_root=root,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        from_state=from_state,
+        to_state=to_state,
+        session_id=session_id,
+        reason=reason,
+    )
+
+
+def audit_evidence_write(
+    task_id: str,
+    artifact_type: str,
+    path: str,
+    round_num: int,
+    *,
+    repo_root: Path | None = None,
+    validator_id: str | None = None,
+) -> None:
+    """Emit a tamper-evident audit event for an evidence write operation.
+
+    This function emits an `evidence.write` event to the canonical audit log,
+    recording the artifact type, file path, round number, and task ID. This provides
+    an immutable, append-only log of all evidence writes for forensics.
+
+    Args:
+        task_id: The task ID this evidence belongs to
+        artifact_type: Type of artifact (e.g., 'bundle', 'implementation_report', 'validator_report')
+        path: The file path where evidence was written
+        round_num: The validation round number
+        repo_root: Optional repository root for config resolution
+        validator_id: Optional validator ID for validator reports
+    """
+    root = _best_effort_repo_root(repo_root)
+    if root is None:
+        return
+
+    try:
+        cfg = LoggingConfig(repo_root=root)
+    except Exception:
+        return
+
+    if not cfg.enabled or not cfg.audit_enabled or not cfg.evidence_writes_enabled:
+        return
+
+    audit_event(
+        "evidence.write",
+        repo_root=root,
+        task_id=task_id,
+        artifact_type=artifact_type,
+        path=path,
+        round=round_num,
+        validator_id=validator_id,
+    )
+
+
+__all__ = [
+    "audit_event",
+    "truncate_text",
+    "audit_entity_transition",
+    "audit_evidence_write",
+]

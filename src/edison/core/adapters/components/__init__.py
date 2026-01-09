@@ -33,6 +33,9 @@ from .hooks import (
 # Settings
 from .settings import SettingsComposer
 
+# Tampering
+from .tampering import DenyRules
+
 __all__ = [
     # Base
     "AdapterComponent",
@@ -52,4 +55,6 @@ __all__ = [
     "ALLOWED_TYPES",
     # Settings
     "SettingsComposer",
+    # Tampering
+    "DenyRules",
 ]

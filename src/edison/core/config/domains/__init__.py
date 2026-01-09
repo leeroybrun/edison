@@ -18,6 +18,7 @@ Available domain configs:
 - CLIConfig: CLI output formatting and display settings
 - JSONIOConfig: JSON I/O formatting and encoding settings
 - Context7Config: Context7 package detection and aliases
+- TamperingConfig: Tampering protection settings (enabled, mode, protected_dir)
 
 Note: AdaptersConfig has been removed. Use CompositionConfig.adapters instead.
 
@@ -62,6 +63,7 @@ from .json_io import JSONIOConfig
 from .context7 import Context7Config
 from .logging import LoggingConfig
 from .tdd import TDDConfig
+from .tampering import TamperingConfig
 
 __all__: list[str] = [
     "AgentsConfig",
@@ -84,4 +86,5 @@ __all__: list[str] = [
     "Context7Config",
     "LoggingConfig",
     "TDDConfig",
+    "TamperingConfig",
 ]

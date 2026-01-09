@@ -327,6 +327,28 @@ class BaseRepository(BaseEntityManager[T]):
         # Persist
         self.save(entity)
 
+        # Emit tamper-evident audit event for the transition (fail-open)
+        try:
+            from edison.core.audit.logger import audit_entity_transition
+
+            # Extract session_id from entity or context
+            session_id = getattr(entity, "session_id", None)
+            if session_id is None:
+                session_id = ctx.get("session_id")
+
+            audit_entity_transition(
+                entity_type=self.entity_type,
+                entity_id=str(entity_id),
+                from_state=from_state,
+                to_state=to_state,
+                repo_root=self.project_root,
+                session_id=session_id,
+                reason=reason,
+            )
+        except Exception:
+            # Audit logging is fail-open: never block transitions due to logging errors
+            pass
+
         return entity
 
 

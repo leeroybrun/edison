@@ -5,7 +5,7 @@ from .context import (
     set_audit_context,
 )
 from .invocation import InvocationAudit, audit_invocation
-from .logger import audit_event
+from .logger import audit_entity_transition, audit_event, audit_evidence_write
 from .stdio import capture_stdio
 
 __all__ = [
@@ -14,6 +14,8 @@ __all__ = [
     "set_audit_context",
     "clear_audit_context",
     "audit_event",
+    "audit_entity_transition",
+    "audit_evidence_write",
     "capture_stdio",
     "audit_invocation",
     "InvocationAudit",

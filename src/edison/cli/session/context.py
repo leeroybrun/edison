@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root, resolve_session_id
+from edison.cli import OutputFormatter, add_format_flag, add_json_flag, add_repo_root_flag, get_repo_root, resolve_output_format, resolve_session_id
 
 SUMMARY = "Print a deterministic project/session context refresher (hook-safe)"
 
@@ -20,12 +20,14 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         nargs="?",
         help="Optional session identifier (defaults to auto-detected current session)",
     )
-    add_json_flag(parser)
+    add_format_flag(parser, default="markdown")
+    add_json_flag(parser)  # Backwards compatibility
     add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
-    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+    output_format = resolve_output_format(args)
+    formatter = OutputFormatter(format=output_format)
 
     try:
         project_root = get_repo_root(args)
