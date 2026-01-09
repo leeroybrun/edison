@@ -88,22 +88,18 @@ validation:
       enabled: true
       # Run Codex only when explicitly requested (e.g. the `bundle` preset).
       always_run: false
-      timeout: 1500
 
     # Run critical validators with Claude CLI by default for reliability.
     security:
       engine: claude-cli
-      timeout: 1500
 
     performance:
       engine: claude-cli
-      timeout: 1500
 
     # The global validator prompt is intentionally large (constitution + checklist + stack overlays).
     global-claude:
       # Only run Claude when included by the selected preset (avoid forcing it in coderabbit-only runs).
       always_run: false
-      timeout: 1500
 
     global-coderabbit:
       name: "CodeRabbit AI Review (Global)"
@@ -114,7 +110,6 @@ validation:
       always_run: false
       enabled: false
       blocking: false
-      timeout: 1500
       context7_required: false
       context7_packages: []
       triggers: []
@@ -128,7 +123,6 @@ validation:
       wave: global
       always_run: false
       blocking: true
-      timeout: 1500
       context7_required: false
       context7_packages: []
       triggers: []

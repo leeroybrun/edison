@@ -9,7 +9,7 @@ validation:
       wave: comprehensive
       always_run: false
       blocking: false
-      timeout: 1500
+      timeout: 6000
       context7_required: true
       context7_packages: ["+", "react"]
       triggers: ["**/*.tsx", "**/*.jsx", "**/components/**/*"]

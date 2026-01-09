@@ -38,7 +38,7 @@ class ValidatorMetadata:
     always_run: bool = False
     fallback_engine: str = ""
     prompt: str = ""
-    timeout: int = 1500
+    timeout: int = 6000
     context7_required: bool = False
     context7_packages: list[str] = field(default_factory=list)
     focus: list[str] = field(default_factory=list)
@@ -147,7 +147,7 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
         """Get the default per-validator timeout in seconds.
 
         Reads from validation.execution.timeout (preferred), falls back to validation.timeout,
-        and fails closed to 1500s.
+        and fails closed to 6000s.
         """
         if self._default_timeout is None:
             config = self._load_config()
@@ -159,11 +159,11 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
             if raw is None and isinstance(validation_cfg, dict):
                 raw = validation_cfg.get("timeout")
             if raw is None:
-                raw = 1500
+                raw = 6000
             try:
                 self._default_timeout = int(raw)
             except Exception:
-                self._default_timeout = 1500
+                self._default_timeout = 6000
         return self._default_timeout
 
     def _load_config(self) -> dict[str, Any]:
