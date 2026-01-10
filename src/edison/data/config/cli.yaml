@@ -7,6 +7,15 @@ cli:
     enabled: true
     threshold_seconds: 8
     interval_seconds: 15
+    max_interval_seconds: 120
+    backoff_multiplier: 2
+    # Only emit heartbeats if there has been no stderr/stdout activity for this long.
+    # Set to 0 to always emit on the schedule.
+    idle_seconds: 5
+    # If true, include the full argv once (and only once) in the heartbeat extras.
+    show_command_once: false
+    # If true, include a "next update in ..." hint in each heartbeat.
+    show_next_update: true
   table:
     padding: 1
     column_gap: 2

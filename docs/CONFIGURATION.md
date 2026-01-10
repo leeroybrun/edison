@@ -331,6 +331,36 @@ allowed_transitions:
 
 ---
 
+### cli.yaml
+
+CLI output and progress configuration. This is where the periodic “still running” heartbeats are configured for long-running commands.
+
+```yaml
+cli:
+  progress:
+    enabled: true
+    threshold_seconds: 8
+    interval_seconds: 15
+    max_interval_seconds: 120
+    backoff_multiplier: 2
+    idle_seconds: 5
+    show_command_once: false
+    show_next_update: true
+```
+
+Environment variable overrides (highest priority):
+
+- `EDISON_CLI_PROGRESS`
+- `EDISON_CLI_PROGRESS_THRESHOLD_SECONDS`
+- `EDISON_CLI_PROGRESS_INTERVAL_SECONDS`
+- `EDISON_CLI_PROGRESS_MAX_INTERVAL_SECONDS`
+- `EDISON_CLI_PROGRESS_BACKOFF_MULTIPLIER`
+- `EDISON_CLI_PROGRESS_IDLE_SECONDS`
+- `EDISON_CLI_PROGRESS_SHOW_COMMAND_ONCE`
+- `EDISON_CLI_PROGRESS_SHOW_NEXT_UPDATE`
+
+---
+
 ### session.yaml
 
 Session management, recovery, and worktree configuration.
