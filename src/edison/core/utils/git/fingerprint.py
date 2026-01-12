@@ -7,6 +7,7 @@ repo state for evidence freshness checks.
 from __future__ import annotations
 
 import hashlib
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -127,4 +128,93 @@ def compute_repo_fingerprint(repo_root: Path | str | None = None) -> dict[str, A
     return {"gitHead": head, "gitDirty": bool(dirty), "diffHash": diff_hash}
 
 
-__all__ = ["compute_repo_fingerprint"]
+@dataclass(frozen=True, slots=True)
+class WorkspaceFingerprint:
+    """Workspace fingerprint built from multiple git repositories + extra files."""
+
+    git_head: str
+    diff_hash: str
+    git_dirty: bool
+    details: dict[str, Any]
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "gitHead": self.git_head,
+            "diffHash": self.diff_hash,
+            "gitDirty": bool(self.git_dirty),
+            "details": self.details,
+        }
+
+
+def _hash_file(path: Path) -> str:
+    try:
+        data = path.read_bytes()
+    except Exception:
+        data = b""
+    return hashlib.sha256(data).hexdigest()
+
+
+def compute_workspace_fingerprint(
+    *,
+    git_roots: list[Path],
+    extra_files: list[Path] | None = None,
+) -> dict[str, Any]:
+    """Compute a deterministic fingerprint for a multi-repo workspace.
+
+    This is useful for "meta repos" or workspaces where the actual changes happen
+    in nested git repos (e.g., a components/ layout), but evidence is captured
+    from a top-level orchestrator repo.
+    """
+    roots = [Path(p).resolve() for p in (git_roots or [])]
+    files = [Path(p).resolve() for p in (extra_files or [])]
+
+    root_fps: list[dict[str, Any]] = []
+    dirty_any = False
+    for root in roots:
+        fp = compute_repo_fingerprint(root)
+        dirty_any = dirty_any or bool(fp.get("gitDirty", False))
+        root_fps.append(
+            {
+                "root": str(root),
+                "gitHead": str(fp.get("gitHead") or ""),
+                "diffHash": str(fp.get("diffHash") or ""),
+                "gitDirty": bool(fp.get("gitDirty", False)),
+            }
+        )
+
+    file_fps: list[dict[str, Any]] = []
+    for p in files:
+        # Only hash existing regular files; missing paths should not explode.
+        if not p.exists() or not p.is_file():
+            continue
+        file_fps.append({"path": str(p), "sha256": _hash_file(p)})
+
+    # Stable ordering so fingerprints don't depend on list ordering.
+    root_fps_sorted = sorted(root_fps, key=lambda d: d.get("root", ""))
+    file_fps_sorted = sorted(file_fps, key=lambda d: d.get("path", ""))
+
+    payload_parts: list[str] = []
+    for r in root_fps_sorted:
+        payload_parts.append(f"root={r.get('root','')}")
+        payload_parts.append(f"head={r.get('gitHead','')}")
+        payload_parts.append(f"diff={r.get('diffHash','')}")
+        payload_parts.append(f"dirty={int(bool(r.get('gitDirty', False)))}")
+    for f in file_fps_sorted:
+        payload_parts.append(f"file={f.get('path','')}")
+        payload_parts.append(f"sha256={f.get('sha256','')}")
+
+    payload = "\n".join(payload_parts).encode("utf-8")
+    workspace_hash = hashlib.sha256(payload).hexdigest()
+
+    # For snapshot directory names we need a short-ish stable "head".
+    # Use a derived head when there are multiple roots.
+    if len(root_fps_sorted) == 1:
+        head = root_fps_sorted[0].get("gitHead") or "unknown-head"
+    else:
+        head = f"workspace-{workspace_hash[:12]}"
+
+    details = {"gitRoots": root_fps_sorted, "extraFiles": file_fps_sorted}
+    return WorkspaceFingerprint(git_head=head, diff_hash=workspace_hash, git_dirty=dirty_any, details=details).as_dict()
+
+
+__all__ = ["WorkspaceFingerprint", "compute_repo_fingerprint", "compute_workspace_fingerprint"]

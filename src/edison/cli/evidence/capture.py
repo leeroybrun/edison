@@ -137,20 +137,64 @@ def main(args: argparse.Namespace) -> int:
         from edison.core.config.domains.ci import CIConfig
         from edison.core.config.domains.qa import QAConfig
         from edison.core.config.domains.tdd import TDDConfig
+        from edison.core.task.repository import TaskRepository
         from edison.core.qa.evidence.command_evidence import write_command_evidence
         from edison.core.qa.evidence.command_status import get_command_evidence_status
         from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir, snapshot_status
         from edison.core.qa.policy.resolver import ValidationPolicyResolver
-        from edison.core.utils.git.fingerprint import compute_repo_fingerprint
+        from edison.core.qa.evidence.snapshots import current_snapshot_fingerprint
+        from edison.core.utils.text import render_template_text
 
-        fingerprint = compute_repo_fingerprint(project_root)
+        fingerprint = current_snapshot_fingerprint(project_root=project_root)
         key = current_snapshot_key(project_root=project_root)
         snap_dir = snapshot_dir(project_root=project_root, key=key)
         snap_dir.mkdir(parents=True, exist_ok=True)
 
+        # Build a lightweight task frontmatter context for templating CI command strings.
+        # Project-specific keys (e.g. stack/components) should be defined in task templates/overrides,
+        # not as first-class fields in Edison core models.
+        task_repo = TaskRepository(project_root=project_root)
+        task_path = task_repo.get_path(task_id)
+        task_doc = parse_frontmatter(task_path.read_text(encoding="utf-8", errors="strict"))
+        task_fm = task_doc.frontmatter if isinstance(task_doc.frontmatter, dict) else {}
+
+        # Flatten frontmatter keys for the regex-based template engine fallback:
+        # - allow exact keys when they are identifier-like
+        # - also provide a snake_case variant for keys containing hyphens
+        flat: dict[str, Any] = {}
+        for k, v in (task_fm or {}).items():
+            if not isinstance(k, str):
+                continue
+            key = k.strip()
+            if not key:
+                continue
+            if key.replace("_", "").isalnum():
+                flat[key] = v
+            if "-" in key:
+                snake = key.replace("-", "_")
+                if snake.replace("_", "").isalnum() and snake not in flat:
+                    flat[snake] = v
+
+        components_val = flat.get("components")
+        components: list[str] = []
+        if isinstance(components_val, list):
+            components = [str(x).strip() for x in components_val if str(x).strip()]
+        elif isinstance(components_val, str):
+            components = [p.strip() for p in components_val.split(",") if p.strip()]
+
+        command_ctx: dict[str, Any] = {
+            "task_id": task_id,
+            "task": task_fm,
+            **flat,
+            "components_csv": ",".join(components),
+            "component": components[0] if components else "",
+        }
+
         ci_commands = CIConfig(repo_root=project_root).commands
         if not ci_commands:
             raise RuntimeError("No CI commands configured (missing `ci.commands` in config).")
+        # Render any {{var}} placeholders in configured commands using task context.
+        ci_commands = {k: render_template_text(str(v), command_ctx) for k, v in ci_commands.items()}
 
         # Resolve the validation policy up front so output is stable even when
         # the operator uses `--only` for targeted reruns.

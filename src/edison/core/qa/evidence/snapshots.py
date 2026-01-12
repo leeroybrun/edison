@@ -11,7 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from edison.core.utils.git.fingerprint import compute_repo_fingerprint
+from edison.core.config.domains.ci import CIConfig
+from edison.core.utils.git.fingerprint import compute_repo_fingerprint, compute_workspace_fingerprint
 from edison.core.utils.paths.management import get_management_paths
 
 from .command_evidence import parse_command_evidence
@@ -46,7 +47,31 @@ def snapshot_dir(*, project_root: Path, key: SnapshotKey) -> Path:
 
 
 def current_snapshot_key(*, project_root: Path) -> SnapshotKey:
-    return SnapshotKey.from_fingerprint(compute_repo_fingerprint(project_root))
+    return SnapshotKey.from_fingerprint(current_snapshot_fingerprint(project_root=project_root))
+
+
+def current_snapshot_fingerprint(*, project_root: Path) -> dict[str, Any]:
+    """Compute the fingerprint used for command-evidence snapshots.
+
+    Default behavior is single-repo git fingerprinting. Projects can opt into
+    multi-repo workspace fingerprinting via:
+
+      ci:
+        fingerprint:
+          git_roots: [...]
+          extra_files: [...]
+    """
+    cfg = CIConfig(repo_root=project_root)
+    roots = cfg.resolve_fingerprint_git_roots()
+    extra_files = cfg.resolve_fingerprint_extra_files()
+
+    # Fail-closed default: if misconfigured (empty lists), fall back to repo-only fingerprint.
+    if roots or extra_files:
+        if not roots:
+            roots = [project_root]
+        return compute_workspace_fingerprint(git_roots=roots, extra_files=extra_files)
+
+    return compute_repo_fingerprint(project_root)
 
 
 def snapshot_file(*, project_root: Path, key: SnapshotKey, filename: str) -> Path:
@@ -109,6 +134,7 @@ def snapshot_status(
 
 __all__ = [
     "SnapshotKey",
+    "current_snapshot_fingerprint",
     "current_snapshot_key",
     "snapshot_dir",
     "snapshot_file",
