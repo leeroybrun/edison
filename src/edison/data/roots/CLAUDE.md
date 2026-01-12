@@ -13,4 +13,16 @@ This file will direct you to the appropriate constitution based on your role.
 
 <!-- section: composed-additions -->
 
+## Background Subagents + Permissions (Claude Code)
+
+Claude Code background subagents (e.g. Task tool with `run_in_background: true`) cannot prompt for tool permissions.
+
+If a tool call is not already allowed by `.claude/settings.json`, it will be auto-denied (often with “prompts unavailable”)
+and **retry loops will never succeed**.
+
+Hard rules:
+- **Do not retry** permission-denied tool calls in a loop. Fail fast and report the exact tool + command + missing permission.
+- For background work, run shell commands via `edison exec -- <command> ...` so they match the allowed `Bash(edison:*)` rule.
+- If you must run direct `Bash(...)` commands that would require interactive approval, run them **in the foreground** (not background).
+
 <!-- /section: composed-additions -->
