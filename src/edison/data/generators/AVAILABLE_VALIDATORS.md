@@ -24,7 +24,7 @@ Waves define ordering and execution behavior. Validators are assigned to waves v
 | ID | Name | Wave | Engine | Blocking | Always Run | Triggers | Prompt |
 |----|------|------|--------|----------|------------|----------|--------|
 {{#each all_validators}}
-| `{{this.id}}` | {{this.name}} | {{this.wave}} | `{{this.engine}}` | {{#if this.blocking}}✅{{else}}❌{{/if}} | {{#if this.always_run}}✅{{else}}❌{{/if}} | {{#each this.triggers}}`{{this}}`{{#unless @last}}, {{/unless}}{{/each}} | `{{this.prompt}}` |
+| <code>{{this.id}}</code> | {{this.name}} | {{this.wave}} | <code>{{this.engine}}</code> | {{#if this.blocking}}✅{{else}}❌{{/if}} | {{#if this.always_run}}✅{{else}}❌{{/if}} | {{#each this.triggers}}<code>{{this}}</code>{{#unless @last}}, {{/unless}}{{/each}} | <code>{{this.prompt}}</code> |
 {{/each}}
 <!-- /section: roster -->
 

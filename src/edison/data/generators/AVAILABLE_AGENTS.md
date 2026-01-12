@@ -25,7 +25,7 @@ Do not edit directly - changes will be overwritten on next generation.
 
 **Model**: {{this.model}}
 **Type**: {{this.type}}
-**Prompt**: `agents/{{this.name}}.md`
+**Prompt**: <code>agents/{{this.name}}.md</code>
 
 {{this.description}}
 
