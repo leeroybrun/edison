@@ -104,7 +104,10 @@ def resolve_existing_task_id(*, project_root: Path, raw_task_id: str) -> str:
     Supports fail-closed shorthand resolution:
     - exact id match
     - unique prefix match of the form "<token>-*" (e.g. "12007" -> "12007-wave8-...")
+    - unique suffix match for segment tokens (e.g. "T080" -> "<prefix>-T080")
     """
+    import re
+
     from edison.core.config.domains import TaskConfig
     from edison.core.session.paths import get_session_bases
     from edison.core.task.repository import TaskRepository
@@ -124,6 +127,11 @@ def resolve_existing_task_id(*, project_root: Path, raw_task_id: str) -> str:
             return set()
         return {p.stem for p in dir_path.glob(f"{prefix}*{repo.file_extension}") if p.is_file()}
 
+    def _scan_dir_glob(dir_path: Path, pattern: str) -> set[str]:
+        if not dir_path.exists():
+            return set()
+        return {p.stem for p in dir_path.glob(pattern) if p.is_file()}
+
     # Shorthand resolution is intentionally conservative: by default we only match
     # "<token>-*" since Edison canonical ids are "<numeric-prefix>-<slug>".
     prefix = f"{token}-"
@@ -141,6 +149,35 @@ def resolve_existing_task_id(*, project_root: Path, raw_task_id: str) -> str:
     matches = sorted(matches_set)
     if len(matches) == 1:
         return matches[0]
+
+    # Segment/suffix token resolution (safe-by-default):
+    #
+    # Many imported backlogs use IDs like "<feature>-T080". People naturally type "T080".
+    # Only auto-resolve when there is exactly one *full task id* match ending in "-<token>".
+    #
+    # IMPORTANT: This intentionally does NOT do general fuzzy substring matching.
+    if not matches and re.fullmatch(r"[A-Za-z]+[0-9]+", token or ""):
+        suffix_pattern = f"*-{token}{repo.file_extension}"
+        suffix_matches_set: set[str] = set()
+
+        for st in states:
+            suffix_matches_set |= _scan_dir_glob(tasks_root / st, suffix_pattern)
+        for base in get_session_bases(project_root=project_root):
+            for st in states:
+                suffix_matches_set |= _scan_dir_glob(base / "tasks" / st, suffix_pattern)
+
+        suffix_matches = sorted(suffix_matches_set)
+        if len(suffix_matches) == 1:
+            return suffix_matches[0]
+        if suffix_matches:
+            shown = suffix_matches[:10]
+            more = "" if len(suffix_matches) <= 10 else f"\n  ... and {len(suffix_matches) - 10} more"
+            raise ValueError(
+                f"Ambiguous task id '{raw_task_id}' (matches {len(suffix_matches)} tasks). "
+                "Use the full task id.\n"
+                + "\n".join(f"  - {m}" for m in shown)
+                + more
+            )
 
     if matches:
         shown = matches[:10]
