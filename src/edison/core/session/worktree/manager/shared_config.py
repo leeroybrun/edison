@@ -79,6 +79,13 @@ def parse_shared_paths(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
                     str(p).strip() for p in commit_allow_prefixes_raw if str(p).strip()
                 ]
 
+            only_if_target_exists = item.get("onlyIfTargetExists")
+            if only_if_target_exists is None:
+                only_if_target_exists = item.get("only_if_target_exists")
+            if only_if_target_exists is None:
+                only_if_target_exists = False
+            only_if_target_exists = bool(only_if_target_exists)
+
             out.append(
                 {
                     "path": path,
@@ -89,6 +96,7 @@ def parse_shared_paths(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
                     "enabled": enabled,
                     "commitAllowed": commit_allowed,
                     "commitAllowPrefixes": commit_allow_prefixes,
+                    "onlyIfTargetExists": only_if_target_exists,
                 }
             )
             continue
@@ -120,4 +128,3 @@ def parse_shared_paths(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 __all__ = ["shared_state_cfg", "parse_shared_paths"]
-

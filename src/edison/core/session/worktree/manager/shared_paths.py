@@ -132,6 +132,7 @@ def ensure_shared_paths_in_checkout(
 
         item_type = str(item.get("type") or "dir").strip().lower()
         merge_existing = bool(item.get("mergeExisting", True))
+        only_if_target_exists = bool(item.get("onlyIfTargetExists", False))
         target_root = str(item.get("targetRoot") or "shared").strip().lower()
         if target_root == "primary":
             if primary_root_cache is None:
@@ -144,6 +145,8 @@ def ensure_shared_paths_in_checkout(
 
         link = checkout_path / rel
         target = Path(shared_root) / rel
+        if only_if_target_exists and not target.exists():
+            continue
         if _ensure_symlink_with_merge(
             link=link,
             target=target,

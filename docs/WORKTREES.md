@@ -111,3 +111,47 @@ Safety note: Edison intentionally **skips symlinking** a sharedPath if that path
 - `ls -la <path>` should show symlinks in primary/session worktrees for shared state.
 - `git worktree list` should show `_meta` and your session worktrees.
 
+## Dependency installs + virtual environments (Python/Node)
+
+### `worktrees.installDeps` + `worktrees.postInstallCommands`
+
+Edison can optionally run dependency installation inside a newly created session worktree:
+
+- `worktrees.installDeps: true` runs a best-effort install command (pnpm/npm/yarn/bun, depending on lockfiles).
+- `worktrees.postInstallCommands: [...]` runs extra commands (each executed via `bash -lc` in the worktree).
+
+Defaults are conservative (`installDeps: false`) because installs can be slow, require network access, and vary per repo.
+
+### Python virtual environments: why `.venv` “disappears” in worktrees
+
+Git worktrees do not share ignored/untracked directories. So a `.venv/` created in your primary checkout will not exist in a fresh session worktree unless you:
+
+1) Create a new venv inside the worktree (most reliable), or
+2) Explicitly share/symlink the venv into worktrees (fast, but optional), or
+3) Use a tool-based runner (e.g., `uv run ...`) that does not rely on an activated shell venv.
+
+### Recommended patterns
+
+**Most reliable (recommended): per-worktree venv**
+- Create/install deps in the session worktree and run tests there.
+
+**Fast (optional): share primary venv into worktrees**
+- Add a sharedPath pointing at `.venv/` with `targetRoot: primary`.
+- Use `onlyIfTargetExists: true` to avoid creating empty `.venv/` directories when no venv exists yet.
+
+Example:
+```yaml
+worktrees:
+  sharedState:
+    sharedPaths:
+      - "+"
+      - path: ".venv"
+        scopes: ["primary", "session"]
+        type: "dir"
+        targetRoot: "primary"
+        mergeExisting: false
+        onlyIfTargetExists: true
+        commitAllowed: false
+```Notes:
+- Sharing `.venv/` is not always desirable (size, platform-specific wheels, toolchain differences).
+- For monorepos, use a project-specific path (e.g., `backend/.venv`) in your project config.
