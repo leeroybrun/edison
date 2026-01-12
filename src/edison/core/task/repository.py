@@ -140,8 +140,9 @@ class TaskRepository(
         # Ensure directory exists
         path.parent.mkdir(parents=True, exist_ok=True)
         
-        # Write task as markdown
-        content = self._task_to_markdown(entity)
+        # Write task as markdown (preserving any extra frontmatter keys from the template)
+        extra, body = self._render_task_template(entity)
+        content = self._task_to_markdown(entity, body=body, extra_frontmatter=extra)
         path.write_text(content, encoding="utf-8")
         
         return entity
@@ -190,7 +191,9 @@ class TaskRepository(
                 f"Task file at {current_path} is missing YAML frontmatter. "
                 "Restore the file from the composed template or recreate the task via `edison task new`."
             )
-        body = parse_frontmatter(content_existing).content
+        doc = parse_frontmatter(content_existing)
+        body = doc.content
+        extra = self._extract_extra_frontmatter(doc.frontmatter)
 
         # Check if state or location changed (need to move file)
         cleanup_old = False
@@ -201,8 +204,8 @@ class TaskRepository(
             except OSError:
                 cleanup_old = True
 
-        # Write updated frontmatter + preserved body
-        target_path.write_text(self._task_to_markdown(entity, body=body), encoding="utf-8")
+        # Write updated frontmatter + preserved body + preserved extra frontmatter keys
+        target_path.write_text(self._task_to_markdown(entity, body=body, extra_frontmatter=extra), encoding="utf-8")
         if cleanup_old and current_path.exists():
             current_path.unlink()
     
@@ -350,7 +353,71 @@ class TaskRepository(
 
     # ---------- File Format Helpers ----------
 
-    def _task_to_markdown(self, task: Task, *, body: str | None = None) -> str:
+    def _reserved_frontmatter_keys(self) -> set[str]:
+        return {
+            "id",
+            "title",
+            "owner",
+            "session_id",
+            "relationships",
+            "claimed_at",
+            "last_active",
+            "continuation_id",
+            "result",
+            "delegated_to",
+            "delegated_in_session",
+            "created_at",
+            "updated_at",
+            "tags",
+            "integration",
+        }
+
+    def _extract_extra_frontmatter(self, fm: Any) -> Dict[str, Any]:
+        """Return non-core frontmatter keys (project-specific) to preserve."""
+        if not isinstance(fm, dict):
+            return {}
+        reserved = self._reserved_frontmatter_keys()
+        return {k: v for k, v in fm.items() if isinstance(k, str) and k not in reserved}
+
+    def _render_task_template(self, task: Task) -> tuple[Dict[str, Any], str]:
+        """Render composed task template and return (extra_frontmatter, body)."""
+        tpl_path = self._config.template_path()
+        if not tpl_path.exists():
+            tpl_path = get_data_path("templates") / "artifacts" / "TASK.md"
+        raw = tpl_path.read_text(encoding="utf-8")
+
+        rendered = render_template_text(
+            raw,
+            {
+                "id": task.id,
+                "title": task.title,
+                "description": task.description or "",
+            },
+        )
+
+        try:
+            doc = parse_frontmatter(rendered)
+            extra = self._extract_extra_frontmatter(doc.frontmatter)
+            return extra, (doc.content or "")
+        except Exception:
+            # Fail-open: fall back to legacy behavior.
+            body = strip_frontmatter_block(raw)
+            return {}, render_template_text(
+                body,
+                {
+                    "id": task.id,
+                    "title": task.title,
+                    "description": task.description or "",
+                },
+            )
+
+    def _task_to_markdown(
+        self,
+        task: Task,
+        *,
+        body: str | None = None,
+        extra_frontmatter: Dict[str, Any] | None = None,
+    ) -> str:
         """Serialize a task as Markdown with YAML frontmatter.
 
         - State is NOT stored in frontmatter (derived from directory).
@@ -378,25 +445,26 @@ class TaskRepository(
             "integration": task.integration if getattr(task, "integration", None) else None,
         }
 
+        if extra_frontmatter:
+            for k, v in extra_frontmatter.items():
+                if not isinstance(k, str) or not k.strip():
+                    continue
+                if k in frontmatter_data:
+                    continue
+                frontmatter_data[k] = v
+
         yaml_header = format_frontmatter(frontmatter_data, exclude_none=True)
         rendered_body = body if body is not None else self._render_task_body(task)
         return yaml_header + (rendered_body or "")
 
     def _render_task_body(self, task: Task) -> str:
-        """Render the task body from the composed template."""
-        tpl_path = self._config.template_path()
-        if not tpl_path.exists():
-            tpl_path = get_data_path("templates") / "artifacts" / "TASK.md"
-        raw = tpl_path.read_text(encoding="utf-8")
-        body = strip_frontmatter_block(raw)
-        return render_template_text(
-            body,
-            {
-                "id": task.id,
-                "title": task.title,
-                "description": task.description or "",
-            },
-        )
+        """Render the task body from the composed template.
+
+        NOTE: Task templates may include custom frontmatter keys. We render the full
+        template and extract the body here (fail-open on parse errors).
+        """
+        _extra, body = self._render_task_template(task)
+        return body
 
     def _load_task_from_file(self, path: Path) -> Optional[Task]:
         """Load a task from a markdown file."""

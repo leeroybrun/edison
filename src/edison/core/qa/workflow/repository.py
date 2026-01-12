@@ -126,7 +126,8 @@ class QARepository(
             path = self._resolve_entity_path(entity.id, entity.state)
             
         path.parent.mkdir(parents=True, exist_ok=True)
-        content = self._qa_to_markdown(entity)
+        extra, body = self._render_qa_template(entity)
+        content = self._qa_to_markdown(entity, body=body, extra_frontmatter=extra)
         path.write_text(content, encoding="utf-8")
         return entity
     
@@ -171,7 +172,9 @@ class QARepository(
                 f"QA file at {current_path} is missing YAML frontmatter. "
                 "Restore the file from the composed template or recreate the QA via `edison qa new <task-id>`."
             )
-        body = parse_frontmatter(content_existing).content
+        doc = parse_frontmatter(content_existing)
+        body = doc.content
+        extra = self._extract_extra_frontmatter(doc.frontmatter)
 
         cleanup_old = False
         if current_path.resolve() != target_path.resolve():
@@ -181,7 +184,7 @@ class QARepository(
             except OSError:
                 cleanup_old = True
 
-        target_path.write_text(self._qa_to_markdown(entity, body=body), encoding="utf-8")
+        target_path.write_text(self._qa_to_markdown(entity, body=body, extra_frontmatter=extra), encoding="utf-8")
         if cleanup_old and current_path.exists():
             current_path.unlink()
     
@@ -391,7 +394,68 @@ class QARepository(
     
     # ---------- File Format Helpers ----------
 
-    def _qa_to_markdown(self, qa: QARecord, *, body: str | None = None) -> str:
+    def _reserved_frontmatter_keys(self) -> set[str]:
+        return {
+            "id",
+            "task_id",
+            "title",
+            "round",
+            "validator_owner",
+            "session_id",
+            "validators",
+            "evidence",
+            "created_at",
+            "updated_at",
+            "state_history",
+            "round_history",
+        }
+
+    def _extract_extra_frontmatter(self, fm: Any) -> Dict[str, Any]:
+        if not isinstance(fm, dict):
+            return {}
+        reserved = self._reserved_frontmatter_keys()
+        return {k: v for k, v in fm.items() if isinstance(k, str) and k not in reserved}
+
+    def _render_qa_template(self, qa: QARecord) -> tuple[Dict[str, Any], str]:
+        tpl_path = self._config.qa_template_path()
+        if not tpl_path.exists():
+            tpl_path = get_data_path("templates") / "artifacts" / "QA.md"
+        raw = tpl_path.read_text(encoding="utf-8")
+
+        rendered = render_template_text(
+            raw,
+            {
+                "id": qa.id,
+                "task_id": qa.task_id,
+                "title": qa.title,
+                "round": qa.round,
+                "validator_owner": qa.validator_owner or qa.metadata.created_by,
+            },
+        )
+        try:
+            doc = parse_frontmatter(rendered)
+            extra = self._extract_extra_frontmatter(doc.frontmatter)
+            return extra, (doc.content or "")
+        except Exception:
+            body = strip_frontmatter_block(raw)
+            return {}, render_template_text(
+                body,
+                {
+                    "id": qa.id,
+                    "task_id": qa.task_id,
+                    "title": qa.title,
+                    "round": qa.round,
+                    "validator_owner": qa.validator_owner or qa.metadata.created_by,
+                },
+            )
+
+    def _qa_to_markdown(
+        self,
+        qa: QARecord,
+        *,
+        body: str | None = None,
+        extra_frontmatter: Dict[str, Any] | None = None,
+    ) -> str:
         """Serialize a QA record as Markdown with YAML frontmatter.
 
         - State is NOT stored in frontmatter (derived from directory).
@@ -420,28 +484,23 @@ class QARepository(
             "round_history": qa.round_history if qa.round_history else None,
         }
 
+        if extra_frontmatter:
+            for k, v in extra_frontmatter.items():
+                if not isinstance(k, str) or not k.strip():
+                    continue
+                if k in frontmatter_data:
+                    continue
+                frontmatter_data[k] = v
+
         # Format as YAML frontmatter
         yaml_header = format_frontmatter(frontmatter_data, exclude_none=True)
         rendered_body = body if body is not None else self._render_qa_body(qa)
         return yaml_header + (rendered_body or "")
 
     def _render_qa_body(self, qa: QARecord) -> str:
-        """Render the QA body from the composed template."""
-        tpl_path = self._config.qa_template_path()
-        if not tpl_path.exists():
-            tpl_path = get_data_path("templates") / "artifacts" / "QA.md"
-        raw = tpl_path.read_text(encoding="utf-8")
-        body = strip_frontmatter_block(raw)
-        return render_template_text(
-            body,
-            {
-                "id": qa.id,
-                "task_id": qa.task_id,
-                "title": qa.title,
-                "round": qa.round,
-                "validator_owner": qa.validator_owner or qa.metadata.created_by,
-            },
-        )
+        """Render the QA body from the composed template (and ignore template frontmatter)."""
+        _extra, body = self._render_qa_template(qa)
+        return body
 
     def _load_qa_from_file(self, path: Path) -> Optional[QARecord]:
         """Load a QA record from a markdown file."""
