@@ -481,6 +481,11 @@ class ConfigManager:
         if not url:
             return
 
+        # Be tolerant to project configs setting `database: null` (common YAML placeholder).
+        # We need a dict container to store nested keys.
+        if not isinstance(cfg.get("database"), dict):
+            cfg["database"] = {}
+
         self._set_nested(cfg, ["database", "url"], url)
 
     def _load_config_uncached(
