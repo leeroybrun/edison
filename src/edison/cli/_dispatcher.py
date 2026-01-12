@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import os
 import sys
 from collections.abc import Callable
 from functools import lru_cache
@@ -641,6 +642,70 @@ def _is_help_requested(argv: list[str]) -> bool:
     return any(a in ("-h", "--help") for a in argv)
 
 
+def _parse_repo_root_from_argv(argv: list[str]) -> Path | None:
+    """Best-effort parse --repo-root without building the full parser."""
+    for i, a in enumerate(argv):
+        if a == "--repo-root" and i + 1 < len(argv):
+            raw = argv[i + 1]
+            if raw and not raw.startswith("-"):
+                return Path(raw).expanduser().resolve()
+        if a.startswith("--repo-root="):
+            raw = a.split("=", 1)[1].strip()
+            if raw:
+                return Path(raw).expanduser().resolve()
+    return None
+
+
+def _enforce_required_wrapper(argv: list[str]) -> None:
+    """Optionally fail-closed when a project requires a wrapper invocation.
+
+    This is a project-configured safety mechanism (useful for LLM/agent workflows).
+    If enabled, Edison will refuse to run unless a specific env var is present.
+    """
+    try:
+        from edison.core.config import ConfigManager
+        from edison.core.utils.paths import resolve_project_root
+    except Exception:
+        return
+
+    repo_root = _parse_repo_root_from_argv(argv) or resolve_project_root()
+    try:
+        cfg = ConfigManager(repo_root=repo_root).load_config(validate=False, include_packs=True)
+    except Exception:
+        return
+
+    cli_cfg = cfg.get("cli") if isinstance(cfg, dict) else None
+    if not isinstance(cli_cfg, dict):
+        return
+
+    wrapper_cfg = cli_cfg.get("wrapper")
+    if not isinstance(wrapper_cfg, dict):
+        return
+    if not bool(wrapper_cfg.get("enabled", False)):
+        return
+
+    env_var = str(wrapper_cfg.get("env_var") or "").strip()
+    if not env_var:
+        return
+    required_value = str(wrapper_cfg.get("value") or "").strip()
+
+    current = str(os.environ.get(env_var) or "").strip()
+    ok = bool(current) if not required_value else current == required_value
+    if ok:
+        return
+
+    msg = str(wrapper_cfg.get("message") or "").strip()
+    if not msg:
+        msg = (
+            "This project requires invoking Edison via a wrapper.\n"
+            "Fix:\n"
+            "  happys edison -- <edison args...>\n"
+            "  (or project-specific wrapper)"
+        )
+    print(msg, file=sys.stderr)
+    raise SystemExit(2)
+
+
 def _resolve_fast_command_module(argv: list[str]) -> dict[str, str] | None:
     """Resolve the target command module without importing all CLI commands.
 
@@ -773,6 +838,9 @@ def main(argv: list[str] | None = None) -> int:
             "Redirecting to `edison qa round prepare ...`.",
             file=sys.stderr,
         )
+
+    # Project-configured safety guard: refuse to run unless invoked via an approved wrapper.
+    _enforce_required_wrapper(list(argv))
 
     profiler = Profiler() if profile_enabled else None
     ctx = enable_profiler(profiler) if profiler else None
