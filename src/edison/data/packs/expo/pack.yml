@@ -1,0 +1,18 @@
+name: expo
+version: 0.1.0
+description: Expo / React Native pack (Metro, app config, platform constraints, NativeWind awareness)
+category: platform
+tags: [expo, react-native, metro, ios, android, nativewind]
+triggers:
+  filePatterns:
+    - "app.json"
+    - "app.config.*"
+    - "expo-env.d.ts"
+    - "metro.config.*"
+    - "babel.config.*"
+    - "ios/**"
+    - "android/**"
+dependencies: []
+validators:
+  - expo.md
+
