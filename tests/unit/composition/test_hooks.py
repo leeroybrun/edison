@@ -281,6 +281,7 @@ def test_generate_settings_json_section(tmp_path: Path) -> None:
             if h.get("command", "").endswith(".claude/hooks/custom-remind.sh"):
                 found_remind = True
                 assert h["type"] == "command"
+                assert h["command"].startswith("$CLAUDE_PROJECT_DIR/")
                 break
     assert found_remind, "custom-remind hook not found in settings"
 
@@ -296,6 +297,7 @@ def test_generate_settings_json_section(tmp_path: Path) -> None:
             if h.get("command", "").endswith(".claude/hooks/custom-inject.sh"):
                 found_inject = True
                 assert h["type"] == "command"
+                assert h["command"].startswith("$CLAUDE_PROJECT_DIR/")
                 break
     assert found_inject, f"custom-inject hook not found in settings. UserPromptSubmit section: {hooks_section.get('UserPromptSubmit', [])}"
 

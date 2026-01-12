@@ -113,3 +113,61 @@ def test_settings_composer_includes_core_tool_permissions(tmp_path: Path) -> Non
     assert "Glob(./**)" in allow
     assert "Grep(./**)" in allow
     assert "Bash(edison:*)" in allow
+
+
+def test_settings_composer_overwrites_hooks_when_preserving_custom_settings(tmp_path: Path) -> None:
+    """Hooks are Edison-managed and should not be frozen by preserve_custom merges.
+
+    In worktree-heavy setups, settings.json can be written from multiple worktrees.
+    If we preserve an existing hooks section verbatim, it can embed worktree-specific
+    absolute paths that later break when that worktree is archived.
+    """
+    ctx = _build_context(
+        tmp_path,
+        config={
+            "settings": {"claude": {"preserve_custom": True, "backup_before": False}},
+            # Allow hook generation (default is enabled; keep explicit for readability).
+            "hooks": {"enabled": True},
+        },
+    )
+
+    existing_settings_path = tmp_path / ".claude" / "settings.json"
+    existing_settings_path.parent.mkdir(parents=True, exist_ok=True)
+    existing_settings_path.write_text(
+        """{
+  "env": { "CUSTOM": "keep-me" },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "/tmp/bad-hook-path.sh" }
+        ]
+      }
+    ]
+  }
+}
+""",
+        encoding="utf-8",
+    )
+
+    composer = SettingsComposer(ctx)
+    written = composer.write_settings_file()
+    assert written == existing_settings_path
+
+    data = __import__("json").loads(written.read_text(encoding="utf-8"))
+    assert data["env"]["CUSTOM"] == "keep-me"
+
+    # Hooks should be replaced by the composed section, not preserved verbatim.
+    hooks = data.get("hooks") or {}
+    assert isinstance(hooks, dict)
+    assert hooks, "Expected Edison to write a hooks section"
+    # Sanity-check that at least one command hook uses the stable CLAUDE_PROJECT_DIR form.
+    all_commands: list[str] = []
+    for entries in hooks.values():
+        for entry in entries:
+            for hook in entry.get("hooks") or []:
+                cmd = hook.get("command")
+                if isinstance(cmd, str):
+                    all_commands.append(cmd)
+    assert any(cmd.startswith("$CLAUDE_PROJECT_DIR/") for cmd in all_commands)

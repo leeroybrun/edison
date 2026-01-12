@@ -138,3 +138,7 @@ def test_validator_roster_generator_write_creates_file(tmp_path: Path):
     assert result_path == output_dir / "AVAILABLE_VALIDATORS.md"
     content = result_path.read_text()
     assert "# Available Validators" in content
+    # Critical: roster output must not contain unresolved loop placeholders.
+    assert "{{this.id}}" not in content
+    assert "{{this.engine}}" not in content
+    assert "{{this.prompt}}" not in content

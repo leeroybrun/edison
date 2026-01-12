@@ -143,6 +143,65 @@ def test_create_task_basic(repo_env):
     task_path = repo_env / ".project" / "tasks" / "todo" / "T-001.md"
     assert task_path.exists()
 
+
+def test_create_task_preserves_extra_frontmatter_from_template(repo_env):
+    """Task creation should preserve project-specific frontmatter keys from the template."""
+    # Arrange: create a template that defines an extra key (stack) outside core schema.
+    template_path = repo_env / ".project" / "tasks" / "TEMPLATE.md"
+    template_path.parent.mkdir(parents=True, exist_ok=True)
+    template_path.write_text(
+        """---
+stack: exp1
+components:
+  - happy
+  - happy-cli
+---
+
+# {{title}}
+
+{{description}}
+""",
+        encoding="utf-8",
+    )
+
+    workflow = TaskQAWorkflow(project_root=repo_env)
+
+    # Act
+    task = workflow.create_task(task_id="T-010", title="Task with template metadata")
+
+    # Assert: file frontmatter contains the extra keys.
+    task_path = repo_env / ".project" / "tasks" / "todo" / "T-010.md"
+    content = task_path.read_text(encoding="utf-8")
+    assert "stack:" in content
+    assert "exp1" in content
+    assert "components:" in content
+
+
+def test_task_save_preserves_unknown_frontmatter_keys(repo_env):
+    """Saving a task should not drop unknown frontmatter keys (fail-open preservation)."""
+    workflow = TaskQAWorkflow(project_root=repo_env)
+    task = workflow.create_task(task_id="T-011", title="Task preserve frontmatter")
+
+    repo = TaskRepository(project_root=repo_env)
+    path = repo.get_path("T-011")
+    original = path.read_text(encoding="utf-8")
+
+    from edison.core.utils.text import format_frontmatter, parse_frontmatter
+
+    doc = parse_frontmatter(original)
+    fm = dict(doc.frontmatter or {})
+    fm["stack"] = "exp2"
+    injected = format_frontmatter(fm, exclude_none=True) + (doc.content or "")
+    path.write_text(injected, encoding="utf-8")
+
+    # Re-save without changing the task: unknown keys should persist.
+    loaded = repo.get("T-011")
+    assert loaded is not None
+    repo.save(loaded)
+
+    after = path.read_text(encoding="utf-8")
+    assert "stack: exp2" in after
+
 def test_create_task_with_description(repo_env):
     """TaskQAWorkflow.create_task() saves description."""
     workflow = TaskQAWorkflow(project_root=repo_env)

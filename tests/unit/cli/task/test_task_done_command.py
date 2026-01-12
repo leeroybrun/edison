@@ -105,6 +105,79 @@ def test_task_done_resolves_short_id_prefix(
 
 
 @pytest.mark.task
+def test_task_done_resolves_suffix_id_segment_token(
+    isolated_project_env: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(isolated_project_env)
+
+    from edison.core.session.core.models import Session
+    from edison.core.session.persistence.repository import SessionRepository
+    from edison.core.task.repository import TaskRepository
+    from edison.core.task.workflow import TaskQAWorkflow
+
+    session_id = "sess-3"
+    task_id = "speckit-spec-audit-T080"
+
+    SessionRepository(isolated_project_env).create(Session.create(session_id, state="wip"))
+
+    workflow = TaskQAWorkflow(isolated_project_env)
+    workflow.create_task(task_id=task_id, title="Test", session_id=None, create_qa=False)
+    workflow.claim_task(task_id, session_id)
+    _create_minimal_round_1_evidence(isolated_project_env, task_id)
+
+    from edison.cli.task.done import main as done_main
+
+    rc = done_main(
+        argparse.Namespace(
+            record_id="T080",
+            session=session_id,
+            json=True,
+            repo_root=str(isolated_project_env),
+        )
+    )
+    assert rc == 0
+
+    updated = TaskRepository(project_root=isolated_project_env).get(task_id)
+    assert updated is not None
+    assert updated.state == "done"
+
+
+@pytest.mark.task
+def test_task_done_suffix_id_segment_token_ambiguous_fails_closed(
+    isolated_project_env: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(isolated_project_env)
+
+    from edison.core.session.core.models import Session
+    from edison.core.session.persistence.repository import SessionRepository
+    from edison.core.task.workflow import TaskQAWorkflow
+
+    session_id = "sess-ambig"
+    SessionRepository(isolated_project_env).create(Session.create(session_id, state="wip"))
+
+    workflow = TaskQAWorkflow(isolated_project_env)
+    workflow.create_task(task_id="feature-a-T080", title="A", session_id=None, create_qa=False)
+    workflow.create_task(task_id="feature-b-T080", title="B", session_id=None, create_qa=False)
+
+    from edison.cli.task.done import main as done_main
+
+    rc = done_main(
+        argparse.Namespace(
+            record_id="T080",
+            session=session_id,
+            json=False,
+            repo_root=str(isolated_project_env),
+        )
+    )
+    assert rc == 1
+    err = capsys.readouterr().err.lower()
+    assert "ambiguous" in err
+    assert "t080" in err
+
+@pytest.mark.task
 def test_task_done_requires_reason_when_skipping_context7(
     isolated_project_env: Path,
     capsys: pytest.CaptureFixture[str],

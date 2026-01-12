@@ -137,3 +137,26 @@ def test_core_hooks_include_worktree_enforcement(tmp_path: Path) -> None:
     content = scripts["enforce-worktree"].read_text(encoding="utf-8")
     assert "WORKTREE ENFORCEMENT" in content
     assert "edison session detect" in content
+
+
+def test_settings_json_hook_commands_use_claude_project_dir(tmp_path: Path) -> None:
+    """settings.json hook command paths must be worktree-independent."""
+    ctx = _build_context(
+        tmp_path,
+        config={"hooks": {"enabled": True, "platforms": ["claude"]}},
+    )
+
+    composer = HookComposer(ctx)
+    composer.compose_hooks()
+    hooks = composer.generate_settings_json_hooks_section()
+
+    # At least one hook should be emitted and use the stable $CLAUDE_PROJECT_DIR form.
+    commands: list[str] = []
+    for entries in hooks.values():
+        for entry in entries:
+            for hook in entry.get("hooks") or []:
+                cmd = hook.get("command")
+                if isinstance(cmd, str):
+                    commands.append(cmd)
+    assert commands
+    assert any(cmd.startswith("$CLAUDE_PROJECT_DIR/.claude/hooks/") for cmd in commands)
