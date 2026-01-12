@@ -651,6 +651,9 @@ properties:
                   mergeExisting:
                     type: boolean
                     default: true
+                  onlyIfTargetExists:
+                    type: boolean
+                    default: false
                   enabled:
                     type: boolean
                     default: true
