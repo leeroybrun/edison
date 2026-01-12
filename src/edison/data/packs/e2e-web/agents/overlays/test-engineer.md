@@ -8,12 +8,8 @@ overlay_type: extend
 ### Web E2E (Playwright)
 
 ```bash
-# Run E2E suite
-npx playwright test
-
-# Debug a failing test interactively
-npx playwright test --ui
-npx playwright test --headed
+# Run the project's E2E suite using the project's configured runner.
+# Prefer `edison evidence capture <task-id> --only <command>` when the project defines an E2E command.
 ```
 <!-- /extend -->
 

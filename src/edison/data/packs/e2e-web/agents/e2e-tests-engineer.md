@@ -54,24 +54,13 @@ You deliver:
 ### Playwright (E2E)
 
 ```bash
-# Install (project-owned; do not vendor global installs)
-npx playwright install --with-deps
-
-# Run E2E suite
-npx playwright test
-
-# Headed / debug
-npx playwright test --headed
-npx playwright test --ui
-
-# Target a single test by title / file
-npx playwright test e2e/login.spec.ts
-
-# Trace viewer (for traces collected by the suite)
-npx playwright show-trace playwright-report/trace.zip
-
-# HTML report (when configured)
-npx playwright show-report
+# Run the project's E2E suite using the project's configured runner.
+# Do NOT hardcode a package manager (`pnpm`/`yarn`/`npm`) or `npx` in automation:
+# - Prefer the project’s evidence runner (`edison evidence capture ...`) when available.
+# - Otherwise, follow project docs for the canonical E2E command.
+#
+# If no Playwright test suite exists in the repo, this role still applies:
+# validate UI journeys via the project's browser-E2E validator (MCP-driven).
 ```
 <!-- /section: tools -->
 

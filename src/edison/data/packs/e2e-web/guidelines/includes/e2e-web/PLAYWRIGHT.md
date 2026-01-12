@@ -93,6 +93,5 @@ When validating UI changes:
 - If you need a pre-authenticated state for validation, provide it via storage state (rather than manually “clicking login” every time).
 
 If Playwright MCP tools are unavailable:
-- Fall back to running `playwright test` locally and reviewing traces/screenshots.
 - Report the missing tooling as a blocking setup issue when UI changes require browser validation.
 <!-- /section: validator-protocol -->

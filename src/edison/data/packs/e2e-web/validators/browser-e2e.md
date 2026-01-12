@@ -46,7 +46,7 @@ Derive the user journeys to validate:
 ```typescript
 mcp__context7__get_library_docs({
   context7CompatibleLibraryID: "/microsoft/playwright",
-  topic: "Playwright Test best practices (locators, auto-waiting, web-first assertions, tracing), and browser automation basics",
+  topic: "Playwright browser automation best practices (locators, auto-waiting, web-first assertions, tracing), and browser testing basics",
   mode: "info"
 })
 ```
@@ -64,21 +64,7 @@ mcp__context7__get_library_docs({
 - If the required config is missing, instruct the user to configure it before proceeding:
   - `edison validator configure browser-e2e --mode advanced`
 
-### Step 3: Run the Project’s E2E Suite (If Present)
-
-```bash
-if test -f playwright.config.ts -o -f playwright.config.js -o -f playwright.config.mjs -o -f playwright.config.cjs; then
-  npx playwright test
-else
-  echo "No Playwright config detected; proceeding with MCP browser validation only."
-fi
-```
-
-If failures occur, require:
-- trace / screenshot evidence
-- the first failing assertion and why it fails
-
-### Step 4: Browser Validation via Playwright MCP (MANDATORY for UI changes)
+### Step 3: Browser Validation via Playwright MCP (MANDATORY for UI changes)
 
 Use Playwright MCP tools to validate journeys end-to-end in a real browser.
 
@@ -94,7 +80,7 @@ Expected tool family (names may vary by client; adapt to the tools available):
 If these tools are unavailable, flag it as a **blocking setup issue** for UI changes.
 Prefer accessibility/tree snapshots over screenshot-only validation when available.
 
-### Step 5: Adversarial Test Matrix (Must Attempt)
+### Step 4: Adversarial Test Matrix (Must Attempt)
 
 - Navigation: deep link, back/forward, refresh mid-flow
 - Auth: logged out access, expired session, insufficient permissions
@@ -126,7 +112,7 @@ Prefer accessibility/tree snapshots over screenshot-only validation when availab
 - [Non-blocking concerns]
 
 ## Evidence
-- E2E suite run: [pass/fail + summary]
+- Browser validation: [base URL, key journeys tested, and any snapshots/screenshots]
 - MCP actions: [key steps taken]
 - Screenshots/traces: [paths or notes]
 ```
