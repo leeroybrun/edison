@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import Any, Literal
 from urllib.parse import urlparse
@@ -114,25 +115,27 @@ class WebServerConfig:
         _raise_on_legacy_keys(raw)
 
         url_raw = raw.get("url")
-        url = str(url_raw or "").strip()
+        url = os.path.expandvars(str(url_raw or "").strip())
         if not url:
             return None
 
         health_raw = raw.get("healthcheck_url")
-        healthcheck_url = str(health_raw).strip() if health_raw is not None else None
+        healthcheck_url = (
+            os.path.expandvars(str(health_raw).strip()) if health_raw is not None else None
+        )
 
         ensure_running = bool(raw.get("ensure_running", False))
         stop_after = bool(raw.get("stop_after", True))
 
         cwd_raw = raw.get("cwd")
-        cwd = str(cwd_raw).strip() if cwd_raw is not None else None
+        cwd = os.path.expandvars(str(cwd_raw).strip()) if cwd_raw is not None else None
         if cwd == "":
             cwd = None
 
         env: dict[str, str] = {}
         env_raw = raw.get("env")
         if isinstance(env_raw, dict):
-            env = {str(k): str(v) for k, v in env_raw.items()}
+            env = {str(k): os.path.expandvars(str(v)) for k, v in env_raw.items()}
 
         def _as_float(v: Any, default: float) -> float:
             try:
@@ -199,18 +202,18 @@ def _parse_start_config(raw: dict[str, Any]) -> WebServerStartConfig:
     success_exit_codes: list[int] = [0]
 
     if isinstance(start, str):
-        command = start.strip() or None
+        command = os.path.expandvars(start.strip()) or None
     elif isinstance(start, dict):
         if "successExitCodes" in start:
             raise ValueError(
                 "Unsupported legacy web_server.start key: successExitCodes (use success_exit_codes)"
             )
         cmd = start.get("command")
-        command = str(cmd).strip() if cmd is not None else None
+        command = os.path.expandvars(str(cmd).strip()) if cmd is not None else None
         if command == "":
             command = None
         cwd_raw = start.get("cwd")
-        cwd = str(cwd_raw).strip() if cwd_raw is not None else None
+        cwd = os.path.expandvars(str(cwd_raw).strip()) if cwd_raw is not None else None
         if cwd == "":
             cwd = None
         codes = start.get("success_exit_codes")
@@ -227,18 +230,18 @@ def _parse_stop_config(raw: dict[str, Any]) -> WebServerStopConfig:
     run_even_if_no_process = True
 
     if isinstance(stop, str):
-        command = stop.strip() or None
+        command = os.path.expandvars(stop.strip()) or None
     elif isinstance(stop, dict):
         if "runEvenIfNoProcess" in stop:
             raise ValueError(
                 "Unsupported legacy web_server.stop key: runEvenIfNoProcess (use run_even_if_no_process)"
             )
         cmd = stop.get("command")
-        command = str(cmd).strip() if cmd is not None else None
+        command = os.path.expandvars(str(cmd).strip()) if cmd is not None else None
         if command == "":
             command = None
         cwd_raw = stop.get("cwd")
-        cwd = str(cwd_raw).strip() if cwd_raw is not None else None
+        cwd = os.path.expandvars(str(cwd_raw).strip()) if cwd_raw is not None else None
         if cwd == "":
             cwd = None
         run_even_if_no_process = bool(stop.get("run_even_if_no_process", True))
