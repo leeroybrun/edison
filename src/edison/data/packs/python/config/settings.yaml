@@ -8,6 +8,18 @@ settings:
     permissions:
       allow:
         - "+"
+        # Common venv activation patterns (allows chaining: ". .venv/bin/activate && pytest ...")
+        - "Bash(. .venv/bin/activate:*)"
+        - "Bash(source .venv/bin/activate:*)"
+        - "Bash(. venv/bin/activate:*)"
+        - "Bash(source venv/bin/activate:*)"
+        # Common repo-local tool invocations (uv/poetry/pip/ruff/pytest via venv bin)
+        - "Bash(./.venv/bin/python:*)"
+        - "Bash(.venv/bin/python:*)"
+        - "Bash(./.venv/bin/pytest:*)"
+        - "Bash(.venv/bin/pytest:*)"
+        - "Bash(./.venv/bin/ruff:*)"
+        - "Bash(.venv/bin/ruff:*)"
         - "Bash(python -m pytest:*)"
         - "Bash(python3 -m pytest:*)"
         - "Bash(pytest:*)"
