@@ -196,6 +196,7 @@ class HookComposer(AdapterComponent):
         definitions = self.load_definitions()
 
         grouped: dict[str, list[dict[str, Any]]] = {}
+        default_hooks_dir = self.project_root / ".claude" / "hooks"
         for hook_id, hook_def in definitions.items():
             if not hook_def.enabled or hook_id not in scripts:
                 continue
@@ -206,7 +207,25 @@ class HookComposer(AdapterComponent):
             if hook_def.type not in NON_TOOL_EVENTS:
                 entry["matcher"] = hook_def.matcher or "*"
 
-            path_str = str(scripts[hook_id])
+            script_path = scripts[hook_id]
+            path_str = str(script_path)
+            # Prefer a stable, worktree-independent path for shared `.claude` dirs.
+            #
+            # When `.claude/` is symlinked into multiple git worktrees (Edison's default),
+            # composing hooks from *any* worktree would otherwise embed that worktree's
+            # absolute path in settings.json. If that worktree is later archived/removed,
+            # the stored hook command paths break.
+            #
+            # Claude Code exposes `CLAUDE_PROJECT_DIR`, so we can reference hooks relative
+            # to the active project root at runtime.
+            #
+            # Only do this for the default `.claude/hooks` location (overrides may be
+            # external and should remain absolute).
+            try:
+                if output_dir_override is None and script_path.is_relative_to(default_hooks_dir):
+                    path_str = f"$CLAUDE_PROJECT_DIR/.claude/hooks/{script_path.name}"
+            except Exception:
+                pass
             # Shell scripts always use type: command
             entry["hooks"].append({"type": "command", "command": path_str})
 

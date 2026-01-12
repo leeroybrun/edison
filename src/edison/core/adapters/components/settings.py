@@ -172,6 +172,7 @@ class SettingsComposer(AdapterComponent):
     def write_settings_file(self) -> Path:
         """Write settings.json to .claude/, merging with existing file if present."""
         settings = self.compose_settings()
+        composed_hooks = settings.get("hooks")
         target = self.project_root / ".claude" / "settings.json"
         ensure_directory(target.parent)
 
@@ -230,6 +231,10 @@ class SettingsComposer(AdapterComponent):
                 if claude_cfg.get("preserve_custom", True):
                     merged = deep_merge(settings, existing)
                     settings = _merge_permissions_union(merged, baseline=settings, existing=existing)
+                    # Hooks are Edison-managed. Preserve_custom should not freeze old,
+                    # worktree-specific hook paths in settings.json.
+                    if composed_hooks is not None:
+                        settings["hooks"] = composed_hooks
 
         write_json_atomic(target, settings, indent=2)
         return target
