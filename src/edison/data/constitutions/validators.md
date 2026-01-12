@@ -70,8 +70,6 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/VALIDA
 
 {{include-section:guidelines/includes/CONTEXT7.md#workflow}}
 
-{{include-section:guidelines/includes/CONTEXT7.md#validator}}
-
 ---
 
 ## Evidence Verification (CRITICAL)

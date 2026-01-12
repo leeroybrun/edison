@@ -67,8 +67,6 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS
 
 {{include-section:guidelines/includes/CONTEXT7.md#workflow}}
 
-{{include-section:guidelines/includes/CONTEXT7.md#agent}}
-
 ---
 
 ## Evidence Workflow (CRITICAL)
