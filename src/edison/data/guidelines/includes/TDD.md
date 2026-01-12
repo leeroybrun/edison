@@ -278,7 +278,7 @@ CRITICAL: Follow TDD cycle strictly (RED-GREEN-REFACTOR)
    Document success in response
 
 3. FINALLY: Refactor (if needed)
-   RUN ALL TESTS: Verify tests still PASS
+   RE-RUN FULL SUITE: Verify tests still PASS
    Document success in response
 
 Return:
