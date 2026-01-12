@@ -67,6 +67,18 @@ composition:
         begin_marker: "<!-- EDISON:START -->"
         end_marker: "<!-- EDISON:END -->"
         on_missing: prepend
+    # CRITICAL: never apply marker-managed writes to composed outputs under `.edison/_generated/**`.
+    # The instruction-files policy above matches by path suffix (PurePath.match semantics),
+    # so without this override, generated files like `.edison/_generated/constitutions/AGENTS.md`
+    # would accumulate stale content after `<!-- EDISON:END -->` and appear duplicated.
+    - id: generated-files-always-replace
+      globs:
+        # Ensure this matches BOTH:
+        # - `.edison/_generated/**` (final outputs)
+        # - `.edison/_generated.__tmp__<stamp>/**` (atomic compose staging dir)
+        - ".edison/_generated*/**/*"
+      policy:
+        mode: replace
 
   # ===========================================================================
   # CONTENT TYPES
