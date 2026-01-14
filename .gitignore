@@ -22,3 +22,6 @@ __pycache__/
 .validator-artifacts/
 /artifacts
 /.pytest-logs
+
+.project/.session-id
+.project/qa/score-history/

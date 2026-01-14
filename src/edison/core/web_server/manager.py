@@ -154,7 +154,13 @@ def _start_process(
     )
 
 
-def _format_map(config: WebServerConfig, *, worktree_path: Path, session_id: str | None, pid: int | None) -> dict[str, str]:
+def _format_map(
+    config: WebServerConfig,
+    *,
+    worktree_path: Path,
+    session_id: str | None,
+    pid: int | None,
+) -> dict[str, str]:
     port = ""
     try:
         parsed = urlparse(config.url)

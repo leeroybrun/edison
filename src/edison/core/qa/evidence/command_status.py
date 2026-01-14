@@ -13,10 +13,9 @@ from typing import Any
 
 from edison.core.config.domains.qa import QAConfig
 from edison.core.qa.policy.resolver import ValidationPolicyResolver
-from edison.core.utils.git.fingerprint import compute_repo_fingerprint
 
 from .command_evidence import parse_command_evidence
-from .snapshots import current_snapshot_key, snapshot_dir
+from .snapshots import current_snapshot_fingerprint, current_snapshot_key, snapshot_dir
 
 
 def _invert_command_evidence_files(evidence_files: dict[str, Any]) -> dict[str, str]:
@@ -40,7 +39,13 @@ def get_command_evidence_status(
 
     `preset_name` forces the preset used to resolve required evidence.
     """
-    current_fp = compute_repo_fingerprint(project_root)
+    # IMPORTANT:
+    # Evidence snapshots are keyed by the *snapshot fingerprint* (which may be a workspace fingerprint
+    # across multiple git roots / extra files), not necessarily the single-repo git fingerprint.
+    #
+    # `edison evidence capture` writes into `snapshot_dir(project_root, current_snapshot_key(...))`.
+    # Status/preflight must use the same fingerprinting to avoid pointing at non-existent snapshot dirs.
+    current_fp = current_snapshot_fingerprint(project_root=project_root)
     key = current_snapshot_key(project_root=project_root)
     snap_dir = snapshot_dir(project_root=project_root, key=key)
 

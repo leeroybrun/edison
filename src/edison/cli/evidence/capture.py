@@ -19,6 +19,8 @@ from edison.cli._utils import resolve_existing_task_id
 
 SUMMARY = "Run configured CI commands and capture output as evidence"
 
+from edison.core.utils.text import parse_frontmatter
+
 
 def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("task_id", help="Task identifier (e.g., 003-validation-presets)")
@@ -165,13 +167,13 @@ def main(args: argparse.Namespace) -> int:
         for k, v in (task_fm or {}).items():
             if not isinstance(k, str):
                 continue
-            key = k.strip()
-            if not key:
+            fm_key = k.strip()
+            if not fm_key:
                 continue
-            if key.replace("_", "").isalnum():
-                flat[key] = v
-            if "-" in key:
-                snake = key.replace("-", "_")
+            if fm_key.replace("_", "").isalnum():
+                flat[fm_key] = v
+            if "-" in fm_key:
+                snake = fm_key.replace("-", "_")
                 if snake.replace("_", "").isalnum() and snake not in flat:
                     flat[snake] = v
 
