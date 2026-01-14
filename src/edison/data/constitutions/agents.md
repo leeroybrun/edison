@@ -37,7 +37,9 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS
 {{/if}}
 ## Core Principles (CRITICAL)
 
+{{if:not(config-eq(tdd.enforcement, off))}}
 {{include-section:guidelines/includes/TDD.md#principles}}
+{{/if}}
 
 {{include-section:guidelines/includes/NO_MOCKS.md#philosophy}}
 
@@ -59,7 +61,9 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS
 
 ---
 
+{{if:not(config-eq(tdd.enforcement, off))}}
 {{include-section:guidelines/includes/TDD.md#agent-execution}}
+{{/if}}
 
 ---
 

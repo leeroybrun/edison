@@ -2,9 +2,19 @@
 # Test-Driven Development enforcement settings
 
 tdd:
+  # TDD policy levels used by composed prompts/constitutions.
+  # - strict: enforce test-first, require evidence, and strongly prefer full verification.
+  # - warn: enforce TDD but allow pragmatic judgment; reject only on clear violations.
+  # - off: do not include TDD enforcement guidance in composed prompts.
+  enforcement: warn
+
   enforceRedGreenRefactor: true
   requireEvidence: true
   hmacValidation: false
+
+  # Whether prompts/constitutions require explicit git commit markers (e.g. [RED]/[GREEN]/[REFACTOR]).
+  # This is a *prompt-level* enforcement knob; it does not change runtime behavior.
+  enforceCommitMarkers: true
 
   # Scan these file globs for forbidden focus/skip tokens before allowing `task ready`.
   # Globs are relative to the project root and any active session worktree.

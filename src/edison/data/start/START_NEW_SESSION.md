@@ -2,7 +2,16 @@
 
 You are starting a fresh work session as an **ORCHESTRATOR**.
 
+{{if:config(worktrees.enabled)}}
 {{include:start/includes/WORKTREE_CONFINEMENT.md}}
+{{else}}
+## Worktree mode: disabled
+
+This project has Edison session worktrees disabled (`worktrees.enabled=false`).
+
+- Do not assume you are confined to a session worktree.
+- Follow the project’s own isolation workflow (if any), such as component worktrees, stacks, or other tooling.
+{{/if}}
 {{include-section:guidelines/includes/EXECUTION_WRAPPER.md#principles}}
 
 ## Immediate Actions
